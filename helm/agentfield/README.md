@@ -97,7 +97,7 @@ kubectl create secret generic agentfield-secrets \
   --from-literal=AGENTFIELD_URL="http://agentfield-control-plane:8080" \
   --from-literal=GITHUB_TOKEN="ghp_your_token" \
   --from-literal=GITHUB_WEBHOOK_SECRET="your_webhook_secret" \
-  --from-literal=AI_API_KEY="your_api_key" \
+  --from-literal=OPENAI_API_KEY="your_api_key" \
   --from-literal=AI_BASE_URL="https://api.deepseek.com" \
   --from-literal=AI_MODEL="deepseek-chat" \
   --from-literal=LOG_LEVEL="info" \
@@ -114,7 +114,7 @@ The `agentfield-secrets` secret must contain:
 | `AGENTFIELD_URL` | AgentField control plane URL | `http://agentfield-control-plane:8080` |
 | `GITHUB_TOKEN` | GitHub Personal Access Token | `ghp_...` |
 | `GITHUB_WEBHOOK_SECRET` | GitHub webhook secret | `your-secret` |
-| `AI_API_KEY` | AI provider API key | DeepSeek or OpenRouter key |
+| `OPENAI_API_KEY` | AI provider API key | DeepSeek or OpenRouter key |
 | `AI_BASE_URL` | AI API base URL | `https://api.deepseek.com` |
 | `AI_MODEL` | AI model name | `deepseek-chat` |
 | `LOG_LEVEL` | Application log level | `info` |

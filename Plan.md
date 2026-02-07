@@ -1424,7 +1424,7 @@ OPENROUTER_API_KEY=sk-or-v1-your-openrouter-api-key
 AI_MODEL=deepseek/deepseek-chat
 
 # AI Configuration (Option 2: OpenAI)
-# OPENAI_API_KEY=sk-proj-your-openai-api-key
+# OPENOPENAI_API_KEY=sk-proj-your-openai-api-key
 # AI_MODEL=gpt-4o
 
 # Application Settings

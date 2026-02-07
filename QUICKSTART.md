@@ -44,7 +44,7 @@ kubectl create secret generic agentfield-secrets \
   --from-literal=AGENTFIELD_URL="http://agentfield-control-plane:8080" \
   --from-literal=GITHUB_TOKEN="ghp_your_token" \
   --from-literal=GITHUB_WEBHOOK_SECRET="your_secret" \
-  --from-literal=AI_API_KEY="your_ai_key" \
+  --from-literal=OPENAI_API_KEY="your_ai_key" \
   --from-literal=AI_BASE_URL="https://api.deepseek.com" \
   --from-literal=AI_MODEL="deepseek-chat" \
   --from-literal=LOG_LEVEL="info" \

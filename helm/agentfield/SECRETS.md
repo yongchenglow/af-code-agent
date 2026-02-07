@@ -21,7 +21,7 @@ The secret must contain all variables from `.env.example`:
 | `AGENTFIELD_URL` | Control plane service URL | `http://agentfield-control-plane:8080` |
 | `GITHUB_TOKEN` | GitHub Personal Access Token | `ghp_xxxxxxxxxxxxx` |
 | `GITHUB_WEBHOOK_SECRET` | GitHub webhook validation secret | `your-webhook-secret` |
-| `AI_API_KEY` | AI provider API key | DeepSeek or OpenRouter key |
+| `OPENAI_API_KEY` | AI provider API key | DeepSeek or OpenRouter key |
 | `AI_BASE_URL` | AI API endpoint | `https://api.deepseek.com` |
 | `AI_MODEL` | AI model identifier | `deepseek-chat` |
 | `LOG_LEVEL` | Application log level | `info` |
@@ -75,7 +75,7 @@ kubectl create secret generic agentfield-secrets \
   --from-literal=AGENTFIELD_URL="http://agentfield-control-plane:8080" \
   --from-literal=GITHUB_TOKEN="ghp_your_token_here" \
   --from-literal=GITHUB_WEBHOOK_SECRET="your_webhook_secret" \
-  --from-literal=AI_API_KEY="your_api_key_here" \
+  --from-literal=OPENAI_API_KEY="your_api_key_here" \
   --from-literal=AI_BASE_URL="https://api.deepseek.com" \
   --from-literal=AI_MODEL="deepseek-chat" \
   --from-literal=LOG_LEVEL="info" \
@@ -107,7 +107,7 @@ Expected output should show all 8 required keys.
 ```bash
 # Patch specific key
 kubectl patch secret agentfield-secrets -n agentfield \
-  -p '{"stringData":{"AI_API_KEY":"new_api_key_value"}}'
+  -p '{"stringData":{"OPENAI_API_KEY":"new_api_key_value"}}'
 
 # Restart deployments to pick up changes
 kubectl rollout restart deployment/agentfield-control-plane -n agentfield

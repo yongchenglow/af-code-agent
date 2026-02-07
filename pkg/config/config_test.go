@@ -95,7 +95,6 @@ func TestEnvironmentConfigValidation(t *testing.T) {
 			config: &EnvironmentConfig{
 				GitHubToken:         "ghp_test_token",
 				GitHubWebhookSecret: "secret",
-				AIAPIKey:            "api-key",
 			},
 			wantErr: false,
 		},
@@ -103,7 +102,6 @@ func TestEnvironmentConfigValidation(t *testing.T) {
 			name: "missing token",
 			config: &EnvironmentConfig{
 				GitHubWebhookSecret: "secret",
-				AIAPIKey:            "api-key",
 			},
 			wantErr: true,
 		},
@@ -111,7 +109,6 @@ func TestEnvironmentConfigValidation(t *testing.T) {
 			name: "missing webhook secret",
 			config: &EnvironmentConfig{
 				GitHubToken: "ghp_test_token",
-				AIAPIKey:    "api-key",
 			},
 			wantErr: true,
 		},
@@ -148,14 +145,14 @@ func TestLoadEnvironmentConfig(t *testing.T) {
 	// Set test environment variables
 	os.Setenv("GITHUB_TOKEN", "ghp_test_token")
 	os.Setenv("GITHUB_WEBHOOK_SECRET", "test-secret")
-	os.Setenv("AI_API_KEY", "test-api-key")
+	os.Setenv("OPENAI_API_KEY", "test-api-key")
 	os.Setenv("AI_TEMPERATURE", "0.5")
 	os.Setenv("AI_MAX_TOKENS", "2000")
 
 	defer func() {
 		os.Unsetenv("GITHUB_TOKEN")
 		os.Unsetenv("GITHUB_WEBHOOK_SECRET")
-		os.Unsetenv("AI_API_KEY")
+		os.Unsetenv("OPENAI_API_KEY")
 		os.Unsetenv("AI_TEMPERATURE")
 		os.Unsetenv("AI_MAX_TOKENS")
 	}()

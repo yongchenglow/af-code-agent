@@ -108,7 +108,6 @@ type EnvironmentConfig struct {
 	AgentFieldURL       string
 	GitHubToken         string
 	GitHubWebhookSecret string
-	AIAPIKey            string
 	AIBaseURL           string
 	AIModel             string
 	AITemperature       float64

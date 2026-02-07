@@ -629,7 +629,7 @@ Yes! The agent supports any OpenAI-compatible API:
 
 ```bash
 # OpenAI
-OPENAI_API_KEY=sk-proj-...
+OPENOPENAI_API_KEY=sk-proj-...
 AI_MODEL=gpt-4o
 
 # Anthropic Claude (via OpenRouter)

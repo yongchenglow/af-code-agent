@@ -35,13 +35,13 @@ Environment variables are defined in `.env` file or set in your deployment envir
 | Variable | Required | Description | Default | Example |
 |----------|----------|-------------|---------|---------|
 | `OPENROUTER_API_KEY` | Yes* | OpenRouter API key for DeepSeek | - | `sk-or-v1-abc123` |
-| `OPENAI_API_KEY` | Yes* | OpenAI API key (alternative to OpenRouter) | - | `sk-proj-abc123` |
+| `OPENOPENAI_API_KEY` | Yes* | OpenAI API key (alternative to OpenRouter) | - | `sk-proj-abc123` |
 | `AI_MODEL` | Yes | AI model to use | `deepseek/deepseek-chat` | `gpt-4o` |
 | `AI_BASE_URL` | No | Custom AI API base URL | Auto-detected | `https://api.deepseek.com` |
 | `AI_TEMPERATURE` | No | AI temperature (0-1) | `0.2` | `0.1` |
 | `AI_MAX_TOKENS` | No | Maximum tokens per request | `4000` | `2000` |
 
-*Either `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is required
+*Either `OPENROUTER_API_KEY` or `OPENOPENAI_API_KEY` is required
 
 ### AgentField Configuration
 

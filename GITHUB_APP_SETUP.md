@@ -89,7 +89,7 @@ GITHUB_PRIVATE_KEY_PATH=./github-app.pem          # Path to your private key
 GITHUB_WEBHOOK_SECRET=your-generated-secret-here   # Secret from Step 1
 
 # DeepSeek AI Configuration
-AI_API_KEY=your-deepseek-api-key
+OPENAI_API_KEY=your-deepseek-api-key
 AI_BASE_URL=https://api.deepseek.com
 AI_MODEL=deepseek-chat
 AI_TEMPERATURE=0.2

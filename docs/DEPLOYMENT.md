@@ -223,7 +223,7 @@ The secret must contain these environment variables from `.env.example`:
 - `AGENTFIELD_URL`
 - `GITHUB_TOKEN`
 - `GITHUB_WEBHOOK_SECRET`
-- `AI_API_KEY`
+- `OPENAI_API_KEY`
 - `AI_BASE_URL`
 - `AI_MODEL`
 - `LOG_LEVEL`

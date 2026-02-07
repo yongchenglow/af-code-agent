@@ -122,7 +122,6 @@ func LoadEnvironmentConfig() (*EnvironmentConfig, error) {
 		AgentFieldURL:       getEnvOrDefault("AGENTFIELD_URL", "http://localhost:8080"),
 		GitHubToken:         os.Getenv("GITHUB_TOKEN"),
 		GitHubWebhookSecret: os.Getenv("GITHUB_WEBHOOK_SECRET"),
-		AIAPIKey:            os.Getenv("AI_API_KEY"),
 		AIBaseURL:           getEnvOrDefault("AI_BASE_URL", "https://api.deepseek.com"),
 		AIModel:             getEnvOrDefault("AI_MODEL", "deepseek-chat"),
 		AITemperature:       temp,
@@ -159,9 +158,8 @@ func (e *EnvironmentConfig) Validate() error {
 		return fmt.Errorf("GITHUB_WEBHOOK_SECRET is required")
 	}
 
-	if e.AIAPIKey == "" {
-		return fmt.Errorf("AI_API_KEY is required")
-	}
+	// AgentField SDK validates OPENAI_API_KEY or OPENROUTER_API_KEY
+	// during AI client initialization, so we don't need to check here
 
 	return nil
 }

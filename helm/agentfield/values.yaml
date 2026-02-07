@@ -3,7 +3,7 @@ replicaCount: 1
 
 controlPlane:
   image:
-    repository: ghcr.io/yourorg/af-code-agent
+    repository: ghcr.io/yongchenglow/af-code-agent
     pullPolicy: IfNotPresent
     tag: "latest"
 
@@ -108,9 +108,9 @@ agent:
   replicaCount: 2
 
   image:
-    repository: ghcr.io/yourorg/af-code-agent
+    repository: ghcr.io/yongchenglow/af-code-agent
     pullPolicy: IfNotPresent
-    tag: "latest"
+    tag: "main-f3e6da2660865678d42f507c7ed9f4f35b479bb8"
 
   imagePullSecrets:
     - name: ghcr-secret
