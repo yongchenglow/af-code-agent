@@ -1,9 +1,9 @@
 apiVersion: v2
-name: agentfield
-description: AgentField Control Plane and Agent Helm Chart for GitHub Code Agent
+name: agentfield-agent
+description: AgentField Agent Helm Chart for GitHub Code Agent
 type: application
 version: 1.0.0
-appVersion: "1.0.0"
+appVersion: "main-83c225afa5bd00ff565fe73d5642cd4b990e477c"
 keywords:
   - agentfield
   - github

@@ -1,130 +1,36 @@
-# Default values for agentfield control plane
-replicaCount: 1
+# Default values for agentfield agents
+# Note: This chart deploys agents only. The AgentField control plane
+# should be deployed separately from the AgentField project.
 
-controlPlane:
-  image:
-    repository: ghcr.io/yongchenglow/af-code-agent
-    pullPolicy: IfNotPresent
-    tag: "latest"
-
-  imagePullSecrets:
-    - name: ghcr-secret
-
-  nameOverride: ""
-  fullnameOverride: "agentfield-control-plane"
-
-  service:
-    type: NodePort
-    port: 8080
-    targetPort: 8080
-    nodePort: 30007
-
-  ingress:
-    enabled: true
-    className: ""
-    annotations: {}
-    host: agentfield.yongchenglow.com
-    tls:
-      enabled: false
-
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 500m
-      memory: 512Mi
-
-  # Additional environment variables (optional)
-  # These are merged with the secret
-  env: []
-
-  # External secret configuration
-  # The secret should be created manually before deploying the chart
-  # See secret-example.yaml for the format
-  externalSecret:
-    enabled: true
-    name: "agentfield-secrets"
-
-  livenessProbe:
-    httpGet:
-      path: /health
-      port: 8080
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-
-  readinessProbe:
-    httpGet:
-      path: /health
-      port: 8080
-    initialDelaySeconds: 10
-    periodSeconds: 5
-    timeoutSeconds: 3
-    failureThreshold: 3
-
-  # Secrets - should be provided via Kubernetes secrets
-  secrets: {}
-    # GITHUB_TOKEN: ""
-    # GITHUB_WEBHOOK_SECRET: ""
-    # AI_API_KEY: ""
-
-  nodeSelector: {}
-
-  tolerations: []
-
-  affinity: {}
-
-  podAnnotations: {}
-
-  podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 1000
-    fsGroup: 1000
-
-  securityContext:
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
-    readOnlyRootFilesystem: false
-
+# Service account for agents
 serviceAccount:
   create: true
   annotations: {}
-  name: "agentfield-control-plane"
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 5
-  targetCPUUtilizationPercentage: 80
-  targetMemoryUtilizationPercentage: 80
+  name: "agentfield-agents"
 
 # Agent configuration - worker agents that process tasks
 agent:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
 
   image:
     repository: ghcr.io/yongchenglow/af-code-agent
     pullPolicy: IfNotPresent
-    tag: "main-f3e6da2660865678d42f507c7ed9f4f35b479bb8"
+    tag: ""  # Uses Chart.AppVersion by default
 
   imagePullSecrets:
     - name: ghcr-secret
 
   nameOverride: ""
-  fullnameOverride: "agentfield-agent"
+  fullnameOverride: ""
 
   resources:
     limits:
-      cpu: 2000m
+      cpu: 1
       memory: 2Gi
     requests:
-      cpu: 1000m
-      memory: 1Gi
+      cpu: 250m
+      memory: 512Mi
 
   # Additional environment variables (optional)
   # These are merged with the secret
@@ -133,7 +39,8 @@ agent:
       value: "agent"
 
   # External secret configuration
-  # Uses the same secret as control plane
+  # The secret should be created manually before deploying the chart
+  # See secret-example.yaml for the format
   externalSecret:
     enabled: true
     name: "agentfield-secrets"
@@ -159,8 +66,8 @@ agent:
     readOnlyRootFilesystem: false
 
   autoscaling:
-    enabled: true
-    minReplicas: 2
+    enabled: false
+    minReplicas: 1
     maxReplicas: 10
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 75

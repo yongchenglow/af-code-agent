@@ -1,37 +1,23 @@
-🎉 AgentField has been deployed!
+🎉 AgentField Agent has been deployed!
 
 Release Name: {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}
 
 Components Deployed:
-  ✓ Control Plane ({{ .Values.replicaCount }} replica{{ if gt (.Values.replicaCount | int) 1 }}s{{ end }})
 {{- if .Values.agent.enabled }}
   ✓ Agent Workers ({{ .Values.agent.replicaCount }} replica{{ if gt (.Values.agent.replicaCount | int) 1 }}s{{ end }})
 {{- end }}
 
-{{- if .Values.controlPlane.ingress.enabled }}
-Application URL:
-  https://{{ .Values.controlPlane.ingress.host }}
-{{- else }}
-Get the application URL by running:
-  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "agentfield.fullname" . }})
-  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
-  echo http://$NODE_IP:$NODE_PORT
-{{- end }}
+IMPORTANT: This chart deploys agents only. Make sure the AgentField control plane is running
+and accessible at the AGENTFIELD_URL configured in your secret ({{ .Values.agent.externalSecret.name }}).
 
 To check the status of your deployment:
-  # Control Plane
-  kubectl get pods -l app.kubernetes.io/component=control-plane -n {{ .Release.Namespace }}
-  kubectl logs -f deployment/{{ include "agentfield.fullname" . }} -n {{ .Release.Namespace }}
-
-{{- if .Values.agent.enabled }}
   # Agent Workers
   kubectl get pods -l app.kubernetes.io/component=agent -n {{ .Release.Namespace }}
-  kubectl logs -f deployment/{{ include "agentfield.fullname" . }}-agent -n {{ .Release.Namespace }}
-{{- end }}
+  kubectl logs -f deployment/{{ include "agentfield.fullname" . }} -n {{ .Release.Namespace }}
 
-To view services:
-  kubectl get svc -n {{ .Release.Namespace }}
+To view the secret configuration:
+  kubectl get secret {{ .Values.agent.externalSecret.name }} -n {{ .Release.Namespace }}
 
 {{- if .Values.agent.autoscaling.enabled }}
 
@@ -40,3 +26,9 @@ Autoscaling is enabled for agents:
   Max replicas: {{ .Values.agent.autoscaling.maxReplicas }}
   kubectl get hpa -n {{ .Release.Namespace }}
 {{- end }}
+
+To scale the agents manually:
+  kubectl scale deployment/{{ include "agentfield.fullname" . }} --replicas=3 -n {{ .Release.Namespace }}
+
+To view agent logs:
+  kubectl logs -f -l app.kubernetes.io/component=agent -n {{ .Release.Namespace }}
