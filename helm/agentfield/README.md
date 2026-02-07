@@ -109,16 +109,16 @@ kubectl create secret generic agentfield-secrets \
 
 The `agentfield-secrets` secret must contain:
 
-| Key | Description | Example |
-|-----|-------------|---------|
-| `AGENTFIELD_URL` | AgentField control plane URL | `http://agentfield-control-plane:8080` |
-| `GITHUB_TOKEN` | GitHub Personal Access Token | `ghp_...` |
-| `GITHUB_WEBHOOK_SECRET` | GitHub webhook secret | `your-secret` |
-| `OPENAI_API_KEY` | AI provider API key | DeepSeek or OpenRouter key |
-| `AI_BASE_URL` | AI API base URL | `https://api.deepseek.com` |
-| `AI_MODEL` | AI model name | `deepseek-chat` |
-| `LOG_LEVEL` | Application log level | `info` |
-| `PORT` | Application port | `8080` |
+| Key                     | Description                  | Example                                |
+| ----------------------- | ---------------------------- | -------------------------------------- |
+| `AGENTFIELD_URL`        | AgentField control plane URL | `http://agentfield-control-plane:8080` |
+| `GITHUB_TOKEN`          | GitHub Personal Access Token | `ghp_...`                              |
+| `GITHUB_WEBHOOK_SECRET` | GitHub webhook secret        | `your-secret`                          |
+| `OPENAI_API_KEY`        | AI provider API key          | DeepSeek or OpenRouter key             |
+| `AI_BASE_URL`           | AI API base URL              | `https://api.deepseek.com`             |
+| `AI_MODEL`              | AI model name                | `deepseek-chat`                        |
+| `LOG_LEVEL`             | Application log level        | `info`                                 |
+| `PORT`                  | Application port             | `8080`                                 |
 
 See `secret-example.yaml` for the complete secret template.
 
