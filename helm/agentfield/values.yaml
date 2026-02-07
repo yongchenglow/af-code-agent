@@ -1,0 +1,99 @@
+# Default values for agentfield control plane
+replicaCount: 1
+
+controlPlane:
+  image:
+    repository: ghcr.io/yourorg/af-code-agent
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  imagePullSecrets:
+    - name: ghcr-secret
+
+  nameOverride: ""
+  fullnameOverride: "agentfield-control-plane"
+
+  service:
+    type: NodePort
+    port: 8080
+    targetPort: 8080
+    nodePort: 30007
+
+  ingress:
+    enabled: true
+    className: ""
+    annotations: {}
+    host: agentfield.yongchenglow.com
+    tls:
+      enabled: false
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+  env:
+    - name: AGENTFIELD_URL
+      value: "http://agentfield-control-plane:8080"
+    - name: PORT
+      value: "8080"
+
+  # Secrets - should be provided via Kubernetes secrets
+  secrets: {}
+    # GITHUB_APP_ID: ""
+    # GITHUB_PRIVATE_KEY_PATH: ""
+    # OPENAI_API_KEY: ""
+    # OPENROUTER_API_KEY: ""
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  podAnnotations: {}
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: false
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "agentfield-control-plane"
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80

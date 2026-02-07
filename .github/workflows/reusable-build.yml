@@ -1,0 +1,127 @@
+name: Reusable Build Workflow
+
+on:
+  workflow_call:
+    inputs:
+      go_version:
+        description: "Go version to use"
+        required: false
+        type: string
+        default: "1.23"
+    outputs:
+      cache_hit:
+        description: "Whether build cache was hit"
+        value: ${{ jobs.build.outputs.cache_hit }}
+
+jobs:
+  setup:
+    name: Setup & Cache Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      cache_hit: ${{ steps.cache-go-modules.outputs.cache-hit }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go_version }}
+          cache: true
+
+      - name: Cache Go modules
+        id: cache-go-modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-modules-${{ runner.os }}-${{ hashFiles('go.sum') }}
+
+      - name: Download dependencies
+        if: steps.cache-go-modules.outputs.cache-hit != 'true'
+        run: go mod download
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: setup
+    outputs:
+      cache_hit: ${{ needs.setup.outputs.cache_hit }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go_version }}
+          cache: true
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-modules-${{ runner.os }}-${{ hashFiles('go.sum') }}
+
+      - name: Build application
+        run: make build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-code-agent
+          path: github-code-agent
+          retention-days: 1
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go_version }}
+          cache: true
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-modules-${{ runner.os }}-${{ hashFiles('go.sum') }}
+
+      - name: Run tests
+        run: make test
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go_version }}
+          cache: true
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-modules-${{ runner.os }}-${{ hashFiles('go.sum') }}
+
+      - name: Format check
+        run: |
+          make fmt
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Code is not formatted. Please run 'make fmt'"
+            exit 1
+          fi

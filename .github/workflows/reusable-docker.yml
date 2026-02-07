@@ -1,0 +1,127 @@
+name: Reusable Docker Build & Push
+
+on:
+  workflow_call:
+    inputs:
+      go_version:
+        description: "Go version to use"
+        required: false
+        type: string
+        default: "1.23"
+      registry:
+        description: "Container registry"
+        required: false
+        type: string
+        default: "ghcr.io"
+      image_name:
+        description: "Image name (defaults to repository name)"
+        required: false
+        type: string
+        default: ""
+      platforms:
+        description: "Target platforms for multi-arch builds"
+        required: false
+        type: string
+        default: "linux/amd64,linux/arm64"
+      tag_prefix:
+        description: "Prefix for image tags (e.g., branch name)"
+        required: false
+        type: string
+        default: ""
+      push:
+        description: "Whether to push the image"
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      image_tag:
+        description: "The generated image tag"
+        value: ${{ jobs.docker.outputs.image_tag }}
+      image_name:
+        description: "The full image name (lowercase)"
+        value: ${{ jobs.docker.outputs.image_name }}
+
+jobs:
+  docker:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.generate-tag.outputs.TAG }}
+      image_name: ${{ steps.image-name.outputs.IMAGE_NAME_LOWER }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: inputs.push
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine image name
+        id: image-name
+        run: |
+          if [ -n "${{ inputs.image_name }}" ]; then
+            IMAGE_NAME="${{ inputs.image_name }}"
+          else
+            IMAGE_NAME="${{ github.repository }}"
+          fi
+          IMAGE_NAME_LOWER=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME_LOWER=$IMAGE_NAME_LOWER" >> $GITHUB_OUTPUT
+
+      - name: Sanitize branch name
+        id: branch-name
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+          SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/\//-/g' | tr '[:upper:]' '[:lower:]')
+          echo "SANITIZED=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Generate image tag
+        id: generate-tag
+        run: |
+          if [ -n "${{ inputs.tag_prefix }}" ]; then
+            TAG="${{ inputs.tag_prefix }}-${{ github.sha }}"
+          else
+            TAG="${{ steps.branch-name.outputs.SANITIZED }}-${{ github.sha }}"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ inputs.registry }}/${{ steps.image-name.outputs.IMAGE_NAME_LOWER }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=${{ steps.branch-name.outputs.SANITIZED }}-,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.generate-tag.outputs.TAG }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ inputs.push }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GO_VERSION=${{ inputs.go_version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            REVISION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: ${{ inputs.platforms }}
+
+      - name: Output image details
+        run: |
+          echo "Image: ${{ inputs.registry }}/${{ steps.image-name.outputs.IMAGE_NAME_LOWER }}:${{ steps.generate-tag.outputs.TAG }}"
+          echo "Platforms: ${{ inputs.platforms }}"

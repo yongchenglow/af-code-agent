@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "agentfield.fullname" . }}
+  labels:
+    {{- include "agentfield.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "agentfield.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.controlPlane.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "agentfield.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.controlPlane.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "agentfield.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.controlPlane.podSecurityContext | nindent 8 }}
+      containers:
+        - name: control-plane
+          securityContext:
+            {{- toYaml .Values.controlPlane.securityContext | nindent 12 }}
+          image: "{{ .Values.controlPlane.image.repository }}:{{ .Values.controlPlane.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.controlPlane.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.controlPlane.service.targetPort }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.controlPlane.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.controlPlane.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.controlPlane.resources | nindent 12 }}
+          env:
+            {{- range .Values.controlPlane.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "agentfield.fullname" . }}-config
+            {{- if .Values.controlPlane.secrets }}
+            - secretRef:
+                name: {{ include "agentfield.fullname" . }}-secrets
+            {{- end }}
+      {{- with .Values.controlPlane.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controlPlane.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controlPlane.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

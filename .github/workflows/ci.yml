@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build & Test
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      go_version: "1.23"
+
+  docker:
+    name: Docker Build & Push
+    needs: build
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      go_version: "1.23"
+      push: ${{ github.event_name == 'push' }}
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: write
+
+  deploy-production:
+    name: Deploy to Production
+    needs: docker
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    uses: ./.github/workflows/production-deploy.yml
+    with:
+      image_tag: ${{ needs.docker.outputs.image_tag }}
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: read
+      deployments: write

@@ -1,0 +1,229 @@
+name: Production Deploy
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy"
+        required: true
+        type: string
+
+env:
+  GO_VERSION: "1.23"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PRODUCTION_PORT: 30007
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://agentfield.yongchenglow.com
+    permissions:
+      contents: read
+      packages: read
+      deployments: write
+    outputs:
+      deployment_url: https://agentfield.yongchenglow.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          MISSING_SECRETS=()
+          if [ -z "${{ secrets.KUBECONFIG_PROD }}" ]; then
+            MISSING_SECRETS+=("KUBECONFIG_PROD")
+          fi
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            MISSING_SECRETS+=("CLOUDFLARE_API_TOKEN")
+          fi
+          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            MISSING_SECRETS+=("CLOUDFLARE_ACCOUNT_ID")
+          fi
+          if [ -z "${{ secrets.CLOUDFLARE_TUNNEL_ID }}" ]; then
+            MISSING_SECRETS+=("CLOUDFLARE_TUNNEL_ID")
+          fi
+          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
+            echo "✗ ERROR: Missing required secrets:"
+            printf '  - %s\n' "${MISSING_SECRETS[@]}"
+            exit 1
+          fi
+          echo "✓ All required secrets are configured"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.13.0"
+
+      - name: Setup Kubernetes config
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_PROD }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Create namespace
+        run: |
+          kubectl create namespace agentfield --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Copy GHCR secret to agentfield namespace
+        run: |
+          NAMESPACE="agentfield"
+          if ! kubectl get secret ghcr-secret -n "$NAMESPACE" &>/dev/null; then
+            # Try to copy from default namespace or create new one
+            if kubectl get secret ghcr-secret -n default &>/dev/null; then
+              kubectl get secret ghcr-secret -n default -o yaml | \
+                sed "s/namespace: default/namespace: $NAMESPACE/" | \
+                kubectl apply -f -
+              echo "✓ Copied ghcr-secret to $NAMESPACE"
+            else
+              echo "⚠ Warning: ghcr-secret not found. Please create it manually."
+            fi
+          else
+            echo "✓ Secret ghcr-secret already exists in $NAMESPACE"
+          fi
+
+      - name: Deploy Control Plane with Helm
+        run: |
+          IMAGE_NAME_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          helm upgrade --install agentfield-control-plane ./helm/agentfield \
+            -n agentfield \
+            --create-namespace \
+            -f ./helm/agentfield/values-production.yaml \
+            --set controlPlane.image.tag=${{ inputs.image_tag }} \
+            --set controlPlane.image.repository=${{ env.REGISTRY }}/${IMAGE_NAME_LOWER} \
+            --set controlPlane.service.nodePort=${{ env.PRODUCTION_PORT }} \
+            --set controlPlane.ingress.host=agentfield.yongchenglow.com \
+            --wait \
+            --timeout 10m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/agentfield-control-plane -n agentfield --timeout=2m
+
+      - name: Create Cloudflare Tunnel route
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+        run: |
+          PORT="${{ env.PRODUCTION_PORT }}"
+          FULL_HOSTNAME="agentfield.yongchenglow.com"
+          echo "Adding Cloudflare tunnel route for: $FULL_HOSTNAME -> http://localhost:${PORT}"
+
+          CURRENT_CONFIG=$(curl -s -X GET \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/cfd_tunnel/$CLOUDFLARE_TUNNEL_ID/configurations" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json")
+
+          if ! echo "$CURRENT_CONFIG" | jq -e '.success == true' >/dev/null 2>&1; then
+            echo "✗ Failed to get current tunnel configuration"
+            echo "$CURRENT_CONFIG" | jq '.'
+            exit 1
+          fi
+
+          CURRENT_INGRESS=$(echo "$CURRENT_CONFIG" | jq '.result.config.ingress // []')
+          CURRENT_INGRESS=$(echo "$CURRENT_INGRESS" | jq --arg hostname "$FULL_HOSTNAME" '
+            map(select(.hostname != $hostname))
+          ')
+
+          NEW_INGRESS=$(echo "$CURRENT_INGRESS" | jq --arg hostname "$FULL_HOSTNAME" --arg service "http://localhost:${PORT}" '
+            map(select(.service != "http_status:404")) +
+            [{
+              "hostname": $hostname,
+              "service": $service
+            }] +
+            [{"service": "http_status:404"}]
+          ')
+
+          UPDATE_RESPONSE=$(curl -s -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/cfd_tunnel/$CLOUDFLARE_TUNNEL_ID/configurations" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "{\"config\": {\"ingress\": $NEW_INGRESS}}")
+
+          if echo "$UPDATE_RESPONSE" | jq -e '.success == true' >/dev/null 2>&1; then
+            echo "✓ Successfully added tunnel route for $FULL_HOSTNAME"
+          else
+            echo "✗ Failed to update tunnel configuration"
+            echo "$UPDATE_RESPONSE" | jq '.'
+            exit 1
+          fi
+
+      - name: Create Cloudflare DNS record
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+        run: |
+          FULL_HOSTNAME="agentfield.yongchenglow.com"
+          DOMAIN="yongchenglow.com"
+
+          echo "Creating DNS CNAME record for: $FULL_HOSTNAME"
+
+          ZONE_RESPONSE=$(curl -s -X GET \
+            "https://api.cloudflare.com/client/v4/zones?name=${DOMAIN}" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json")
+
+          ZONE_ID=$(echo "$ZONE_RESPONSE" | jq -r '.result[0].id')
+
+          if [ -z "$ZONE_ID" ] || [ "$ZONE_ID" = "null" ]; then
+            echo "✗ Failed to get Zone ID for domain: $DOMAIN"
+            exit 1
+          fi
+
+          echo "✓ Found Zone ID: $ZONE_ID"
+
+          EXISTING_RECORD=$(curl -s -X GET \
+            "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?type=CNAME&name=${FULL_HOSTNAME}" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json")
+
+          RECORD_ID=$(echo "$EXISTING_RECORD" | jq -r '.result[0].id // empty')
+
+          if [ -n "$RECORD_ID" ]; then
+            echo "✓ DNS record already exists, updating it"
+            UPDATE_RESPONSE=$(curl -s -X PUT \
+              "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{
+                \"type\": \"CNAME\",
+                \"name\": \"${FULL_HOSTNAME}\",
+                \"content\": \"${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com\",
+                \"ttl\": 1,
+                \"proxied\": true
+              }")
+
+            if echo "$UPDATE_RESPONSE" | jq -e '.success == true' >/dev/null 2>&1; then
+              echo "✓ Successfully updated DNS record for $FULL_HOSTNAME"
+            else
+              echo "✗ Failed to update DNS record"
+              exit 1
+            fi
+          else
+            echo "Creating new DNS record"
+            CREATE_RESPONSE=$(curl -s -X POST \
+              "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{
+                \"type\": \"CNAME\",
+                \"name\": \"${FULL_HOSTNAME}\",
+                \"content\": \"${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com\",
+                \"ttl\": 1,
+                \"proxied\": true
+              }")
+
+            if echo "$CREATE_RESPONSE" | jq -e '.success == true' >/dev/null 2>&1; then
+              echo "✓ Successfully created DNS record for $FULL_HOSTNAME"
+            else
+              echo "✗ Failed to create DNS record"
+              exit 1
+            fi
+          fi

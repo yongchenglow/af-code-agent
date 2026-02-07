@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Tests
+tests/
+*.test
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+github-code-agent
+coverage.out
+coverage.html
+
+# CI/CD
+.github/
+
+# Env files
+.env
+.env.*
+
+# Helm
+helm/
+
+# Misc
+.DS_Store
+*.log

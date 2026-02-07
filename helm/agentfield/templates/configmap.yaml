@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agentfield.fullname" . }}-config
+  labels:
+    {{- include "agentfield.labels" . | nindent 4 }}
+data:
+  # Add any configuration data here
+  # These will be available as environment variables
