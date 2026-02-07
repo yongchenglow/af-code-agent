@@ -1,0 +1,83 @@
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/Agent-Field/agentfield/sdk/go/agent"
+	"github.com/Agent-Field/agentfield/sdk/go/ai"
+	"github.com/joho/godotenv"
+
+	"github.com/yourorg/github-code-agent/features/analyzer"
+	"github.com/yourorg/github-code-agent/features/webhook"
+	"github.com/yourorg/github-code-agent/pkg/config"
+)
+
+func main() {
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using environment variables")
+	}
+
+	// Load application configuration
+	cfg, err := config.LoadConfig(".github/code-agent.yml")
+	if err != nil {
+		log.Printf("Warning: Failed to load config: %v", err)
+		log.Println("Using default configuration")
+		cfg = config.DefaultConfig()
+	}
+
+	// Configure AI (supports OpenAI or OpenRouter)
+	// For DeepSeek via OpenRouter:
+	// export OPENROUTER_API_KEY="sk-or-v1-..."
+	// export AI_MODEL="deepseek/deepseek-chat"
+	aiConfig := ai.DefaultConfig() // Reads from environment
+
+	// Create AgentField agent
+	app, err := agent.New(agent.Config{
+		NodeID:        "github-code-agent",
+		Version:       "1.0.0",
+		TeamID:        "code-review",
+		AgentFieldURL: getEnv("AGENTFIELD_URL", "http://localhost:8080"),
+		AIConfig:      aiConfig,
+	})
+	if err != nil {
+		log.Fatalf("Failed to create agent: %v", err)
+	}
+
+	// Store config in context for reasoners to access
+	ctx := context.WithValue(context.Background(), "config", cfg)
+	ctx = context.WithValue(ctx, "agent", app)
+
+	// Register all feature reasoners
+	log.Println("Registering reasoners...")
+	webhook.RegisterReasoners(app)
+	analyzer.RegisterReasoners(app)
+	// reviewer.RegisterReasoners(app)     // Phase 2
+	// standards.RegisterReasoners(app)    // Phase 2
+	// fixer.RegisterReasoners(app)        // Phase 3
+	// gitops.RegisterReasoners(app)       // Phase 3
+
+	// Start the agent service
+	log.Println("Starting GitHub Code Agent...")
+	log.Printf("  Node ID: %s", "github-code-agent")
+	log.Printf("  Version: %s", "1.0.0")
+	log.Printf("  Team ID: %s", "code-review")
+	log.Printf("  AgentField URL: %s", getEnv("AGENTFIELD_URL", "http://localhost:8080"))
+	log.Printf("  AI Model: %s", aiConfig.Model)
+	log.Printf("  Mode: %s", cfg.Agent.Mode)
+
+	// Run will automatically handle CLI mode or server mode
+	if err := app.Run(ctx); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// getEnv retrieves an environment variable with a default fallback
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}

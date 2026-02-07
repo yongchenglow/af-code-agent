@@ -1,0 +1,95 @@
+# GitHub Code Agent Configuration
+
+# Agent configuration
+agent:
+  enabled: true
+  mode: safe # Options: yolo, safe
+
+# Webhook triggers
+webhooks:
+  triggers:
+    - pull_request.opened
+    - pull_request.synchronize
+    - check_suite.completed
+  wait_for_ci: true
+  debounce_seconds: 30
+
+# Review settings
+review:
+  auto_review: true
+  auto_fix: true
+  severity_threshold: medium
+  ignore_paths:
+    - "*.md"
+    - "docs/**"
+    - "tests/fixtures/**"
+
+# Feedback loop settings
+validation:
+  enabled: true
+  max_fix_attempts: 3
+  checks:
+    - syntax
+    - linting
+    - formatting
+    - security
+  timeout_seconds: 30
+  auto_format: true
+
+# Coding standards
+standards:
+  coding:
+    max_line_length: 100
+    max_function_length: 50
+    max_complexity: 10
+    naming_conventions:
+      functions: snake_case
+      classes: PascalCase
+      constants: UPPER_SNAKE_CASE
+
+  documentation:
+    require_docstrings: true
+    docstring_style: google
+    require_type_hints: true
+    require_module_docs: true
+
+  security:
+    check_dependencies: true
+    check_secrets: true
+    owasp_checks: true
+
+# Language-specific settings
+languages:
+  python:
+    linters:
+      - pylint
+      - black
+      - mypy
+    min_test_coverage: 80
+
+  javascript:
+    linters:
+      - eslint
+      - prettier
+    frameworks:
+      - react
+
+  go:
+    linters:
+      - golangci-lint
+      - gofmt
+    min_test_coverage: 80
+
+# AI model configuration
+ai:
+  provider: deepseek
+  model: deepseek-chat
+  base_url: https://api.deepseek.com
+  temperature: 0.2
+  max_tokens: 4000
+
+# Notification settings
+notifications:
+  on_review_complete: true
+  on_fixes_applied: true
+  mention_author: true
