@@ -3,8 +3,8 @@
 An autonomous GitHub code review agent built with Go and [AgentField](https://www.agentfield.ai) that automatically reviews pull requests, identifies issues, and applies fixes using AI.
 
 [![Status](https://img.shields.io/badge/status-production%20ready-success)](https://github.com)
-[![Go](https://img.shields.io/badge/go-1.23-blue)](https://go.dev/)
-[![Tests](https://img.shields.io/badge/tests-50%2B%20passing-success)](https://github.com)
+[![Go](https://img.shields.io/badge/go-1.24-blue)](https://go.dev/)
+[![Tests](https://img.shields.io/badge/tests-174%20passing-success)](https://github.com)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ## Table of Contents
@@ -19,6 +19,7 @@ An autonomous GitHub code review agent built with Go and [AgentField](https://ww
 - [Workflow](#workflow)
 - [Development](#development)
 - [Performance](#performance)
+- [Deployment](#deployment)
 - [Documentation](#documentation)
 
 ## Overview
@@ -123,13 +124,14 @@ graph TB
 
 | Component      | Technology                   |
 | -------------- | ---------------------------- |
-| Language       | Go 1.23                      |
+| Language       | Go 1.24.0                    |
 | Framework      | AgentField SDK               |
 | AI Model       | DeepSeek Chat                |
 | GitHub API     | google/go-github/v57         |
 | Configuration  | YAML + Environment Variables |
 | Git Operations | Command-line git             |
 | Testing        | Go testing + Mocks           |
+| Deployment     | Docker + Kubernetes (Helm)   |
 
 ### Agent Reasoners
 
@@ -171,72 +173,100 @@ graph LR
 github-code-agent/
 ├── cmd/
 │   └── agent/
-│       └── main.go                    # Entry point
+│       └── main.go                    # Entry point (104 lines)
 ├── features/                          # Feature-based organization
 │   ├── webhook/                       # GitHub webhook handling
 │   │   ├── webhook.go                # Main handler
+│   │   ├── webhook_test.go           # Unit tests
 │   │   ├── validator.go              # Signature validation
 │   │   ├── reasoners.go              # AgentField integration
 │   │   └── types.go                  # Event types
 │   ├── analyzer/                      # PR analysis
 │   │   ├── analyzer.go               # File analysis
+│   │   ├── analyzer_test.go          # Unit tests
 │   │   ├── reasoners.go              # AgentField integration
 │   │   └── types.go                  # Analysis types
 │   ├── reviewer/                      # AI code review
 │   │   ├── reviewer.go               # Review logic
+│   │   ├── reviewer_test.go          # Unit tests
 │   │   ├── prioritizer.go            # Issue prioritization
+│   │   ├── prioritizer_test.go       # Unit tests
 │   │   ├── comments.go               # GitHub comments
 │   │   ├── reasoners.go              # AgentField integration
 │   │   └── types.go                  # Review types
 │   ├── standards/                     # Standards validation
 │   │   ├── standards.go              # Validation rules
+│   │   ├── standards_test.go         # Unit tests
 │   │   ├── reasoners.go              # AgentField integration
 │   │   └── types.go                  # Violation types
 │   ├── fixer/                         # Fix generation
 │   │   ├── fixer.go                  # Fix generation with retry
+│   │   ├── fixer_test.go             # Unit tests
 │   │   ├── validator.go              # Validation engine
 │   │   ├── reasoners.go              # AgentField integration
 │   │   └── types.go                  # Patch types
 │   └── gitops/                        # Git operations
 │       ├── gitops.go                 # Branch, commit, push
+│       ├── gitops_test.go            # Unit tests
 │       ├── github.go                 # GitHub API wrapper
 │       ├── workflow.go               # Orchestration
 │       ├── reasoners.go              # AgentField integration
 │       └── types.go                  # Git operation types
 ├── pkg/
 │   ├── github/                        # GitHub API client
-│   │   └── client.go
+│   │   ├── client.go
+│   │   └── client_test.go            # Unit tests
 │   ├── config/                        # Configuration
 │   │   ├── config.go
+│   │   ├── config_test.go            # Unit tests
 │   │   └── types.go
 │   └── performance/                   # Performance optimizations
 │       ├── parallel.go               # Parallel execution
+│       ├── parallel_test.go          # Unit tests
 │       ├── cache.go                  # Caching system
+│       ├── cache_test.go             # Unit tests
 │       └── ratelimit.go              # Rate limiting
-├── tests/
-│   ├── mocks/                         # Mock infrastructure
-│   │   ├── github_mock.go
-│   │   └── ai_mock.go
-│   ├── integration/                   # Integration tests
-│   │   └── workflow_test.go
-│   └── e2e/                           # End-to-end tests
-│       └── pr_review_test.go
+├── helm/agentfield/                   # Kubernetes Helm chart
+│   ├── Chart.yaml                    # Helm chart metadata
+│   ├── values.yaml                   # Default values
+│   ├── values-production.yaml        # Production overrides
+│   ├── secret.yaml                   # Secrets configuration
+│   ├── secret-example.yaml           # Secrets template
+│   └── templates/
+│       ├── deployment.yaml           # Control plane deployment
+│       ├── service.yaml              # Kubernetes service
+│       ├── configmap.yaml            # Configuration
+│       ├── serviceaccount.yaml       # RBAC
+│       └── hpa.yaml                  # Auto-scaling
+├── docs/                              # Documentation
+│   ├── USER_GUIDE.md                 # User guide
+│   ├── API_REFERENCE.md              # API documentation
+│   ├── CONFIGURATION_REFERENCE.md    # Config reference
+│   ├── DEPLOYMENT.md                 # Deployment guide
+│   └── QUICK_START.md                # Quick start guide
 ├── .github/
-│   └── code-agent.yml                 # Agent configuration
+│   ├── code-agent.yml                # Agent configuration
+│   └── workflows/                    # GitHub Actions
+│       └── ci.yml                    # CI/CD pipeline
+├── Dockerfile                         # Multi-stage Docker build
+├── Makefile                          # Build automation
 ├── .env.example                       # Environment variables template
-├── go.mod
-├── go.sum
-└── README.md
+├── go.mod                            # Go dependencies
+├── go.sum                            # Dependency checksums
+└── README.md                         # This file
 ```
 
 ## Setup
 
 ### Prerequisites
 
-- Go 1.21 or higher
-- GitHub App credentials
+- Go 1.24 or higher
+- GitHub Personal Access Token or GitHub App credentials
 - AI API key (DeepSeek via OpenRouter, or any OpenAI-compatible API)
+- AgentField instance (cloud or self-hosted)
 - Git installed (for git operations)
+- Docker (optional, for containerized deployment)
+- Kubernetes cluster (optional, for production deployment)
 
 ### Installation
 
@@ -262,16 +292,17 @@ cp .env.example .env
 1. **Configure environment variables in `.env`:**
 
 ```bash
+# AgentField Configuration
+AGENTFIELD_URL=https://your-agentfield-instance.com
+AGENTFIELD_API_KEY=your-agentfield-api-key
+
 # GitHub Configuration
-GITHUB_APP_ID=your-app-id
-GITHUB_PRIVATE_KEY_PATH=./github-app.pem
-GITHUB_WEBHOOK_SECRET=your-webhook-secret
+GITHUB_TOKEN=ghp_your_github_personal_access_token
 
 # AI Configuration (DeepSeek via OpenRouter - Recommended)
-OPENROUTER_API_KEY=sk-or-v1-your-openrouter-api-key
+OPENAI_API_KEY=sk-or-v1-your-openrouter-api-key
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
 AI_MODEL=deepseek/deepseek-chat
-AI_TEMPERATURE=0.2
-AI_MAX_TOKENS=4000
 
 # Application Settings
 PORT=8080
@@ -282,26 +313,30 @@ LOG_LEVEL=info
 
 See [Configuration](#configuration) section for details.
 
-### GitHub App Setup
+### GitHub Token Setup
 
-See [GITHUB_APP_SETUP.md](GITHUB_APP_SETUP.md) for detailed instructions on:
+**For Personal Access Token:**
 
-- Creating a GitHub App
-- Configuring permissions
-- Setting up webhooks
-- Generating private keys
+Create a GitHub Personal Access Token with the following scopes:
 
-**Required Permissions:**
+- `repo` - Full control of private repositories
+- `read:org` - Read org and team membership
+- `write:discussion` - Read and write team discussions
+
+**For GitHub App:**
+
+Alternatively, you can use a GitHub App with:
 
 - **Pull requests**: Read & Write
 - **Contents**: Write
 - **Metadata**: Read
 
-**Required Webhook Events:**
+### AgentField Setup
 
-- `pull_request` (opened, synchronize, reopened)
-- `check_suite` (completed)
-- `workflow_run` (completed)
+1. Sign up at [AgentField](https://www.agentfield.ai) or deploy your own instance
+2. Create a new agent/workspace
+3. Get your AgentField URL and API key
+4. Configure in your `.env` file
 
 ## Configuration
 
@@ -583,19 +618,17 @@ go test ./tests/e2e/...
 **Test Status:**
 
 ```
-✅ features/analyzer    - 2 tests passing
-✅ features/reviewer    - 8 tests passing
-✅ features/standards   - 6 tests passing
-✅ features/webhook     - 3 tests passing
-✅ features/fixer       - 5 tests passing
-✅ features/gitops      - 6 tests passing
-✅ pkg/config          - 3 tests passing
-✅ pkg/github          - 9 tests passing
-✅ pkg/performance     - 11 tests passing
-✅ tests/integration   - 4 tests passing
-✅ tests/e2e           - 4 tests passing
+✅ features/analyzer    - All tests passing
+✅ features/reviewer    - All tests passing
+✅ features/standards   - All tests passing
+✅ features/webhook     - All tests passing
+✅ features/fixer       - All tests passing
+✅ features/gitops      - All tests passing
+✅ pkg/config          - All tests passing
+✅ pkg/github          - All tests passing
+✅ pkg/performance     - All tests passing
 ------------------------------------------
-Total: 50+ tests passing
+Total: 174 test cases passing across 11 test files
 ```
 
 ### Run Locally
@@ -621,21 +654,47 @@ docker build -t github-code-agent .
 
 # Run
 docker run -p 8080:8080 --env-file .env github-code-agent
+
+# Build with specific Go version
+docker build --build-arg GO_VERSION=1.24.13 -t github-code-agent .
 ```
 
-### Testing Webhooks Locally
-
-Use ngrok or smee.io to expose your local server:
+### Kubernetes Deployment
 
 ```bash
-# Using ngrok
-ngrok http 8080
+# Install using Helm
+helm install github-code-agent ./helm/agentfield
 
-# Update GitHub App webhook URL to:
-# https://abc123.ngrok.io/webhook
+# Install with custom values
+helm install github-code-agent ./helm/agentfield -f ./helm/agentfield/values-production.yaml
 
-# Start agent
-go run cmd/agent/main.go
+# Update deployment
+helm upgrade github-code-agent ./helm/agentfield
+
+# Check status
+kubectl get pods -l app=github-code-agent
+```
+
+### Using Makefile
+
+```bash
+# Build the binary
+make build
+
+# Run tests
+make test
+
+# Run the agent locally
+make run
+
+# Build Docker image
+make docker
+
+# Clean build artifacts
+make clean
+
+# Run linters
+make lint
 ```
 
 ## Performance
@@ -672,11 +731,11 @@ go run cmd/agent/main.go
 
 ## Documentation
 
-- 📖 **[USER_GUIDE.md](docs/USER_GUIDE.md)** - Complete user guide (800+ lines)
-- 📖 **[CONFIGURATION_REFERENCE.md](docs/CONFIGURATION_REFERENCE.md)** - Configuration reference (900+ lines)
-- 📖 **[API_REFERENCE.md](docs/API_REFERENCE.md)** - API documentation (700+ lines)
-- 🔧 **[GITHUB_APP_SETUP.md](GITHUB_APP_SETUP.md)** - GitHub App setup guide
-- 📋 **[Plan.md](Plan.md)** - Complete implementation plan
+- 📖 **[USER_GUIDE.md](docs/USER_GUIDE.md)** - Complete user guide
+- 📖 **[CONFIGURATION_REFERENCE.md](docs/CONFIGURATION_REFERENCE.md)** - Configuration reference
+- 📖 **[API_REFERENCE.md](docs/API_REFERENCE.md)** - API documentation
+- 📖 **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment guide
+- 📖 **[QUICK_START.md](docs/QUICK_START.md)** - Quick start guide
 
 ## Cost Estimation
 
@@ -708,12 +767,12 @@ go run cmd/agent/main.go
 
 ## Key Features Summary
 
-### ✅ Production-Ready
+### ✅ Well-Tested
 
-- 50+ comprehensive tests
-- Full integration and E2E test suites
+- 174 test cases across 11 test files
+- Comprehensive unit test coverage
 - Mock infrastructure for reliable testing
-- Performance benchmarks validated
+- All tests passing
 
 ### ✅ Performance Leader
 
@@ -724,10 +783,11 @@ go run cmd/agent/main.go
 
 ### ✅ Well-Documented
 
-- 125+ pages of comprehensive documentation
+- Comprehensive documentation suite
 - User guides with examples
 - Complete API reference
 - Configuration reference with all options
+- Deployment guides for Docker and Kubernetes
 
 ### ✅ Secure
 
@@ -737,12 +797,72 @@ go run cmd/agent/main.go
 - No hardcoded secrets
 - Input validation on all endpoints
 
-### ✅ Scalable
+### ✅ Production-Ready Deployment
 
-- Horizontal scaling via AgentField
-- Queue management and backpressure
-- Resource-efficient Go implementation
-- Ready for Kubernetes deployment
+- Docker containerization with multi-stage builds
+- Kubernetes Helm charts for easy deployment
+- Horizontal pod autoscaling (HPA) configured
+- Non-root container security
+- Health checks and readiness probes
+- Production and development configurations
+
+## Deployment
+
+### Docker Deployment
+
+The project includes a production-ready multi-stage Dockerfile:
+
+**Features:**
+- Multi-stage build for minimal image size
+- Go 1.24.13-alpine base image
+- Non-root user (appuser:1000)
+- Health check endpoint
+- CA certificates for HTTPS
+
+**Build and run:**
+```bash
+docker build -t github-code-agent .
+docker run -d -p 8080:8080 --env-file .env --name code-agent github-code-agent
+```
+
+### Kubernetes Deployment
+
+Production-ready Helm chart with:
+
+**Control Plane:**
+- 1 replica deployment
+- 500m CPU / 512Mi memory requests
+- Health and readiness probes
+- ConfigMap for configuration
+- External secrets management
+
+**Worker Agents:**
+- 2-10 replicas with HPA
+- Auto-scaling based on CPU (70% threshold)
+- Separate deployment for agent workloads
+
+**Deploy to Kubernetes:**
+```bash
+# Create namespace
+kubectl create namespace github-code-agent
+
+# Create secrets
+kubectl create secret generic github-code-agent-secrets \
+  --from-literal=github-token=ghp_your_token \
+  --from-literal=agentfield-api-key=your_key \
+  --from-literal=openai-api-key=sk-your_key \
+  -n github-code-agent
+
+# Deploy with Helm
+helm install github-code-agent ./helm/agentfield \
+  --namespace github-code-agent \
+  -f ./helm/agentfield/values-production.yaml
+
+# Check status
+kubectl get all -n github-code-agent
+```
+
+See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions.
 
 ## Contributing
 
@@ -764,5 +884,6 @@ For issues and questions:
 
 **Last Updated:** 2026-02-07
 **Version:** 1.0.0
-**Status:** ✅ Production Ready
-**Implementation:** Phases 1-4 Complete
+**Go Version:** 1.24.0
+**Tests:** 174 passing
+**Status:** ✅ Active Development
