@@ -93,28 +93,25 @@ func TestEnvironmentConfigValidation(t *testing.T) {
 		{
 			name: "valid config",
 			config: &EnvironmentConfig{
-				GitHubAppID:          "123456",
-				GitHubPrivateKeyPath: "/path/to/key.pem",
-				GitHubWebhookSecret:  "secret",
-				AIAPIKey:             "api-key",
+				GitHubToken:         "ghp_test_token",
+				GitHubWebhookSecret: "secret",
+				AIAPIKey:            "api-key",
 			},
 			wantErr: false,
 		},
 		{
-			name: "missing app ID",
+			name: "missing token",
 			config: &EnvironmentConfig{
-				GitHubPrivateKeyPath: "/path/to/key.pem",
-				GitHubWebhookSecret:  "secret",
-				AIAPIKey:             "api-key",
+				GitHubWebhookSecret: "secret",
+				AIAPIKey:            "api-key",
 			},
 			wantErr: true,
 		},
 		{
-			name: "missing private key path",
+			name: "missing webhook secret",
 			config: &EnvironmentConfig{
-				GitHubAppID:         "123456",
-				GitHubWebhookSecret: "secret",
-				AIAPIKey:            "api-key",
+				GitHubToken: "ghp_test_token",
+				AIAPIKey:    "api-key",
 			},
 			wantErr: true,
 		},
@@ -149,16 +146,14 @@ func TestGetTimeout(t *testing.T) {
 
 func TestLoadEnvironmentConfig(t *testing.T) {
 	// Set test environment variables
-	os.Setenv("GITHUB_APP_ID", "123456")
-	os.Setenv("GITHUB_PRIVATE_KEY_PATH", "/test/key.pem")
+	os.Setenv("GITHUB_TOKEN", "ghp_test_token")
 	os.Setenv("GITHUB_WEBHOOK_SECRET", "test-secret")
 	os.Setenv("AI_API_KEY", "test-api-key")
 	os.Setenv("AI_TEMPERATURE", "0.5")
 	os.Setenv("AI_MAX_TOKENS", "2000")
 
 	defer func() {
-		os.Unsetenv("GITHUB_APP_ID")
-		os.Unsetenv("GITHUB_PRIVATE_KEY_PATH")
+		os.Unsetenv("GITHUB_TOKEN")
 		os.Unsetenv("GITHUB_WEBHOOK_SECRET")
 		os.Unsetenv("AI_API_KEY")
 		os.Unsetenv("AI_TEMPERATURE")
@@ -170,8 +165,8 @@ func TestLoadEnvironmentConfig(t *testing.T) {
 		t.Fatalf("LoadEnvironmentConfig() error = %v", err)
 	}
 
-	if cfg.GitHubAppID != "123456" {
-		t.Errorf("Expected GitHubAppID '123456', got %q", cfg.GitHubAppID)
+	if cfg.GitHubToken != "ghp_test_token" {
+		t.Errorf("Expected GitHubToken 'ghp_test_token', got %q", cfg.GitHubToken)
 	}
 
 	if cfg.AITemperature != 0.5 {

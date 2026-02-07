@@ -179,13 +179,12 @@ func (h *Handler) handlePullRequest(ctx context.Context, event *WebhookEvent) (*
 
 	// Extract PR context
 	prContext := &PRContext{
-		Number:         pr.Number,
-		Branch:         pr.Head.Ref,
-		BaseBranch:     pr.Base.Ref,
-		Author:         pr.User.Login,
-		Title:          pr.Title,
-		HeadSHA:        pr.Head.SHA,
-		InstallationID: event.Installation.ID,
+		Number:     pr.Number,
+		Branch:     pr.Head.Ref,
+		BaseBranch: pr.Base.Ref,
+		Author:     pr.User.Login,
+		Title:      pr.Title,
+		HeadSHA:    pr.Head.SHA,
 	}
 
 	log.Printf("Processing PR #%d: %s (action: %s)", pr.Number, pr.Title, event.Action)

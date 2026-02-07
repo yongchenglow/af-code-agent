@@ -13,19 +13,19 @@ controlPlane:
 
   resources:
     limits:
-      cpu: 1000m
+      cpu: 500m
       memory: 1Gi
     requests:
-      cpu: 500m
+      cpu: 250m
       memory: 512Mi
 
   env:
-    - name: AGENTFIELD_URL
-      value: "http://agentfield-control-plane:8080"
-    - name: PORT
-      value: "8080"
     - name: ENVIRONMENT
       value: "production"
+
+  externalSecret:
+    enabled: true
+    name: "agentfield-secrets"
 
 autoscaling:
   enabled: true
@@ -33,3 +33,36 @@ autoscaling:
   maxReplicas: 2
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
+
+# Agent workers configuration for production
+agent:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+  env:
+    - name: NODE_TYPE
+      value: "agent"
+    - name: ENVIRONMENT
+      value: "production"
+
+  externalSecret:
+    enabled: true
+    name: "agentfield-secrets"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 75

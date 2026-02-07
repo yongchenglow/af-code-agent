@@ -105,17 +105,16 @@ type NotificationConfig struct {
 
 // EnvironmentConfig holds environment-based configuration
 type EnvironmentConfig struct {
-	AgentFieldURL        string
-	GitHubAppID          string
-	GitHubPrivateKeyPath string
-	GitHubWebhookSecret  string
-	AIAPIKey             string
-	AIBaseURL            string
-	AIModel              string
-	AITemperature        float64
-	AIMaxTokens          int
-	LogLevel             string
-	Port                 string
+	AgentFieldURL       string
+	GitHubToken         string
+	GitHubWebhookSecret string
+	AIAPIKey            string
+	AIBaseURL           string
+	AIModel             string
+	AITemperature       float64
+	AIMaxTokens         int
+	LogLevel            string
+	Port                string
 }
 
 // GetTimeout returns the validation timeout as a duration

@@ -17,8 +17,30 @@ This guide explains how to deploy the GitHub Code Agent using GitHub Actions and
 The deployment infrastructure consists of:
 
 - **Namespace**: `agentfield`
-- **Control Plane**: Deployed as `agentfield-control-plane`
-- **Production URL**: https://agentfield.yongchenglow.com
+- **Control Plane**: Deployed as `agentfield-control-plane` (1-2 replicas)
+- **Agent Workers**: Deployed as `agentfield-agent` (3-10 replicas, autoscaling)
+- **Production URL**: <https://agentfield.yongchenglow.com>
+
+### Architecture
+
+The system uses a distributed architecture powered by AgentField:
+
+```
+┌────────────────────────────────────┐
+│    Control Plane (1-2 replicas)    │
+│  - Webhook handling                 │
+│  - Task orchestration               │
+│  - HTTP API (port 8080)             │
+└────────────────────────────────────┘
+              ↓ AgentField
+┌────────────────────────────────────┐
+│   Agent Workers (3-10 replicas)    │
+│  - Code review execution            │
+│  - AI-powered analysis              │
+│  - Fix generation                   │
+│  - Auto-scales on CPU/memory        │
+└────────────────────────────────────┘
+```
 
 ## Prerequisites
 
@@ -39,6 +61,7 @@ Configure the following secrets in your GitHub repository settings:
 #### Production Deployment
 
 - `KUBECONFIG_PROD`: Base64-encoded kubeconfig file for production cluster
+
   ```bash
   cat ~/.kube/config | base64 | pbcopy
   ```
@@ -50,7 +73,6 @@ Configure the following secrets in your GitHub repository settings:
 - `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare account ID
 
 - `CLOUDFLARE_TUNNEL_ID`: Your Cloudflare tunnel ID
-
 
 ### Container Registry
 
@@ -77,10 +99,12 @@ kubectl create secret docker-registry ghcr-secret \
 ### CI Workflow (`.github/workflows/ci.yml`)
 
 Triggered on:
+
 - Push to `main` or `develop` branches
 - Pull requests to `main` or `develop` branches
 
 Workflow steps:
+
 1. **Build & Test**: Runs Go tests and builds the application
 2. **Docker Build & Push**: Creates multi-arch Docker image and pushes to GHCR
 3. **Deploy to Production**: Deploys to production when pushing to `main` branch
@@ -88,17 +112,20 @@ Workflow steps:
 ### Reusable Workflows
 
 #### `reusable-build.yml`
+
 - Sets up Go environment
 - Caches dependencies
 - Runs tests and linting
 - Builds the application
 
 #### `reusable-docker.yml`
+
 - Builds multi-architecture Docker images (amd64, arm64)
 - Pushes to GitHub Container Registry
 - Uses Docker layer caching for faster builds
 
 #### `production-deploy.yml`
+
 - Deploys using Helm
 - Configures Cloudflare Tunnel routes
 - Creates/updates DNS records
@@ -113,23 +140,37 @@ helm/agentfield/
 ├── Chart.yaml                    # Chart metadata
 ├── values.yaml                   # Default values
 ├── values-production.yaml        # Production overrides
+├── README.md                     # Chart documentation
 └── templates/
     ├── _helpers.tpl             # Template helpers
-    ├── deployment.yaml          # Deployment manifest
-    ├── service.yaml             # Service manifest
+    ├── deployment.yaml          # Control plane deployment
+    ├── agent-deployment.yaml    # Agent worker deployment
+    ├── service.yaml             # Control plane service
     ├── serviceaccount.yaml      # ServiceAccount manifest
     ├── configmap.yaml           # ConfigMap manifest
-    ├── hpa.yaml                 # HorizontalPodAutoscaler
+    ├── hpa.yaml                 # Control plane HPA
+    ├── agent-hpa.yaml           # Agent worker HPA
     └── NOTES.txt               # Post-install notes
 ```
 
 ### Values Configuration
 
 #### Production (`values-production.yaml`)
-- 2 replicas (with autoscaling up to 5)
-- 1 CPU / 1Gi memory limits
+
+**Control Plane:**
+
+- 1 replica (with autoscaling up to 2)
+- 500m CPU / 512Mi memory (requests)
+- 1 CPU / 1Gi memory (limits)
 - NodePort: 30007
 - Host: agentfield.yongchenglow.com
+
+**Agent Workers:**
+
+- 3 replicas (with autoscaling up to 10)
+- 1 CPU / 1Gi memory (requests)
+- 2 CPU / 2Gi memory (limits)
+- Auto-scales at 70% CPU / 75% memory
 
 ### Environment Variables
 
@@ -148,20 +189,54 @@ controlPlane:
 
 ### Secrets Management
 
-For sensitive data, create a Kubernetes secret:
+**CRITICAL**: Create the `agentfield-secrets` secret BEFORE deploying the Helm chart.
+
+#### Create from .env file (Recommended)
 
 ```bash
+# Navigate to the helm chart directory
+cd helm/agentfield
+
+# Create secret from your .env file
 kubectl create secret generic agentfield-secrets \
-  --from-literal=GITHUB_APP_ID=your_app_id \
-  --from-literal=OPENAI_API_KEY=your_api_key \
+  --from-env-file=../../.env \
   -n agentfield
 ```
+
+#### Create from secret template
+
+```bash
+# Copy and edit the template
+cp helm/agentfield/secret-example.yaml helm/agentfield/secret.yaml
+vim helm/agentfield/secret.yaml
+
+# Apply the secret
+kubectl apply -f helm/agentfield/secret.yaml
+
+# Clean up (important!)
+rm helm/agentfield/secret.yaml
+```
+
+#### Required Secret Keys
+
+The secret must contain these environment variables from `.env.example`:
+- `AGENTFIELD_URL`
+- `GITHUB_TOKEN`
+- `GITHUB_WEBHOOK_SECRET`
+- `AI_API_KEY`
+- `AI_BASE_URL`
+- `AI_MODEL`
+- `LOG_LEVEL`
+- `PORT`
+
+See `helm/agentfield/secret-example.yaml` for the complete template.
 
 ## Deployment Process
 
 ### Automatic Deployment
 
 **Push to main branch** → triggers production deployment
+
 ```bash
 git checkout main
 git add .
@@ -174,6 +249,7 @@ git push origin main
 #### Using Helm directly
 
 **Production:**
+
 ```bash
 export IMAGE_TAG="main-abc123def456"
 
@@ -188,27 +264,40 @@ helm upgrade --install agentfield-control-plane ./helm/agentfield \
 ### Verify Deployment
 
 ```bash
-# Check pods
+# Check all pods
 kubectl get pods -n agentfield
 
-# Check service
+# Check control plane pods
+kubectl get pods -l app.kubernetes.io/component=control-plane -n agentfield
+
+# Check agent worker pods
+kubectl get pods -l app.kubernetes.io/component=agent -n agentfield
+
+# Check services
 kubectl get svc -n agentfield
 
-# View logs
+# View control plane logs
 kubectl logs -f deployment/agentfield-control-plane -n agentfield
+
+# View agent worker logs
+kubectl logs -f deployment/agentfield-agent -n agentfield
 
 # Check deployment status
 kubectl rollout status deployment/agentfield-control-plane -n agentfield
+kubectl rollout status deployment/agentfield-agent -n agentfield
+
+# Check autoscaling status
+kubectl get hpa -n agentfield
 ```
 
-## Architecture
+## Deployment Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
 │                  GitHub Actions                      │
 │  ┌──────────┐  ┌──────────┐  ┌────────────────┐   │
 │  │  Build   │→ │  Docker  │→ │   Deploy       │   │
-│  │  & Test  │  │  Build   │  │  (Staging/Prod)│   │
+│  │  & Test  │  │  Build   │  │  (Production)  │   │
 │  └──────────┘  └──────────┘  └────────────────┘   │
 └─────────────────────────────────────────────────────┘
                         ↓
@@ -221,13 +310,22 @@ kubectl rollout status deployment/agentfield-control-plane -n agentfield
 │              Kubernetes Cluster                      │
 │  Namespace: agentfield                              │
 │  ┌───────────────────────────────────────────┐     │
-│  │  Deployment: agentfield-control-plane     │     │
-│  │  - Replicas: 1-5 (autoscaling)            │     │
-│  │  - Container: github-code-agent           │     │
+│  │  Control Plane Deployment                 │     │
+│  │  - Name: agentfield-control-plane         │     │
+│  │  - Replicas: 1-2 (autoscaling)            │     │
 │  │  - Port: 8080                             │     │
+│  │  - Resources: 500m CPU / 512Mi RAM        │     │
 │  └───────────────────────────────────────────┘     │
 │  ┌───────────────────────────────────────────┐     │
-│  │  Service: NodePort (30002/30003)          │     │
+│  │  Agent Workers Deployment                 │     │
+│  │  - Name: agentfield-agent                 │     │
+│  │  - Replicas: 3-10 (autoscaling)           │     │
+│  │  - Resources: 1 CPU / 1Gi RAM             │     │
+│  │  - Connects to Control Plane via AgentField     │
+│  └───────────────────────────────────────────┘     │
+│  ┌───────────────────────────────────────────┐     │
+│  │  Service: NodePort 30007                  │     │
+│  │  - Exposes Control Plane only             │     │
 │  └───────────────────────────────────────────┘     │
 └─────────────────────────────────────────────────────┘
                         ↓
@@ -244,6 +342,7 @@ kubectl rollout status deployment/agentfield-control-plane -n agentfield
 1. **Check workflow logs** in GitHub Actions tab
 2. **Verify secrets** are correctly configured
 3. **Check Kubernetes cluster** access:
+
    ```bash
    kubectl get nodes
    kubectl get ns
@@ -282,9 +381,11 @@ kubectl top pods -n agentfield
 
 1. Verify Cloudflare API token has correct permissions
 2. Check tunnel is running:
+
    ```bash
    cloudflared tunnel info YOUR_TUNNEL_ID
    ```
+
 3. Verify DNS records in Cloudflare dashboard
 
 ### Health Check Failures
@@ -360,6 +461,7 @@ kubectl describe hpa agentfield-control-plane -n agentfield
 ## Support
 
 For issues or questions:
+
 1. Check the [troubleshooting section](#troubleshooting)
 2. Review workflow logs in GitHub Actions
 3. Check Kubernetes pod logs and events

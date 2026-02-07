@@ -58,13 +58,12 @@ func main() {
 	}
 
 	// Create GitHub client wrapper
-	ghClientWrapper, err := github.NewClient(envCfg.GitHubAppID, envCfg.GitHubPrivateKeyPath)
+	ghClientWrapper, err := github.NewClient(envCfg.GitHubToken)
 	if err != nil {
 		log.Fatalf("Failed to create GitHub client: %v", err)
 	}
 
 	// Get the basic GitHub client for gitops
-	// In a real scenario, this would be obtained per-installation with proper auth
 	ghClient := ghClientWrapper.GetClient()
 
 	// Store config in context for reasoners to access

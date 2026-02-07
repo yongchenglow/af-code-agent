@@ -1,6 +1,6 @@
 apiVersion: v2
 name: agentfield
-description: AgentField Control Plane Helm Chart for GitHub Code Agent
+description: AgentField Control Plane and Agent Helm Chart for GitHub Code Agent
 type: application
 version: 1.0.0
 appVersion: "1.0.0"

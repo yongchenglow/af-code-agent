@@ -2,16 +2,15 @@ package webhook
 
 // PRContext contains pull request context information
 type PRContext struct {
-	Owner          string
-	Repo           string
-	Number         int
-	Branch         string
-	BaseBranch     string
-	Author         string
-	Title          string
-	Files          []string
-	InstallationID int64
-	HeadSHA        string
+	Owner      string
+	Repo       string
+	Number     int
+	Branch     string
+	BaseBranch string
+	Author     string
+	Title      string
+	Files      []string
+	HeadSHA    string
 }
 
 // WorkflowResult represents the result of a workflow execution

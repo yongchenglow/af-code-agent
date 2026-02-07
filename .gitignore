@@ -43,3 +43,8 @@ temp/
 # Build artifacts
 dist/
 build/
+
+# Kubernetes secrets (never commit!)
+helm/*/secret.yaml
+**/secret.yaml
+secret.yaml

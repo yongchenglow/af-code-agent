@@ -1,7 +1,13 @@
-🎉 AgentField Control Plane has been deployed!
+🎉 AgentField has been deployed!
 
 Release Name: {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}
+
+Components Deployed:
+  ✓ Control Plane ({{ .Values.replicaCount }} replica{{ if gt (.Values.replicaCount | int) 1 }}s{{ end }})
+{{- if .Values.agent.enabled }}
+  ✓ Agent Workers ({{ .Values.agent.replicaCount }} replica{{ if gt (.Values.agent.replicaCount | int) 1 }}s{{ end }})
+{{- end }}
 
 {{- if .Values.controlPlane.ingress.enabled }}
 Application URL:
@@ -14,8 +20,23 @@ Get the application URL by running:
 {{- end }}
 
 To check the status of your deployment:
-  kubectl get pods -n {{ .Release.Namespace }}
+  # Control Plane
+  kubectl get pods -l app.kubernetes.io/component=control-plane -n {{ .Release.Namespace }}
   kubectl logs -f deployment/{{ include "agentfield.fullname" . }} -n {{ .Release.Namespace }}
 
-To view the service:
-  kubectl get svc {{ include "agentfield.fullname" . }} -n {{ .Release.Namespace }}
+{{- if .Values.agent.enabled }}
+  # Agent Workers
+  kubectl get pods -l app.kubernetes.io/component=agent -n {{ .Release.Namespace }}
+  kubectl logs -f deployment/{{ include "agentfield.fullname" . }}-agent -n {{ .Release.Namespace }}
+{{- end }}
+
+To view services:
+  kubectl get svc -n {{ .Release.Namespace }}
+
+{{- if .Values.agent.autoscaling.enabled }}
+
+Autoscaling is enabled for agents:
+  Min replicas: {{ .Values.agent.autoscaling.minReplicas }}
+  Max replicas: {{ .Values.agent.autoscaling.maxReplicas }}
+  kubectl get hpa -n {{ .Release.Namespace }}
+{{- end }}

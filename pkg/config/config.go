@@ -119,17 +119,16 @@ func LoadEnvironmentConfig() (*EnvironmentConfig, error) {
 	}
 
 	return &EnvironmentConfig{
-		AgentFieldURL:        getEnvOrDefault("AGENTFIELD_URL", "http://localhost:8080"),
-		GitHubAppID:          os.Getenv("GITHUB_APP_ID"),
-		GitHubPrivateKeyPath: os.Getenv("GITHUB_PRIVATE_KEY_PATH"),
-		GitHubWebhookSecret:  os.Getenv("GITHUB_WEBHOOK_SECRET"),
-		AIAPIKey:             os.Getenv("AI_API_KEY"),
-		AIBaseURL:            getEnvOrDefault("AI_BASE_URL", "https://api.deepseek.com"),
-		AIModel:              getEnvOrDefault("AI_MODEL", "deepseek-chat"),
-		AITemperature:        temp,
-		AIMaxTokens:          maxTokens,
-		LogLevel:             getEnvOrDefault("LOG_LEVEL", "info"),
-		Port:                 getEnvOrDefault("PORT", "8080"),
+		AgentFieldURL:       getEnvOrDefault("AGENTFIELD_URL", "http://localhost:8080"),
+		GitHubToken:         os.Getenv("GITHUB_TOKEN"),
+		GitHubWebhookSecret: os.Getenv("GITHUB_WEBHOOK_SECRET"),
+		AIAPIKey:            os.Getenv("AI_API_KEY"),
+		AIBaseURL:           getEnvOrDefault("AI_BASE_URL", "https://api.deepseek.com"),
+		AIModel:             getEnvOrDefault("AI_MODEL", "deepseek-chat"),
+		AITemperature:       temp,
+		AIMaxTokens:         maxTokens,
+		LogLevel:            getEnvOrDefault("LOG_LEVEL", "info"),
+		Port:                getEnvOrDefault("PORT", "8080"),
 	}, nil
 }
 
@@ -152,12 +151,8 @@ func (c *Config) Validate() error {
 
 // Validate validates environment configuration
 func (e *EnvironmentConfig) Validate() error {
-	if e.GitHubAppID == "" {
-		return fmt.Errorf("GITHUB_APP_ID is required")
-	}
-
-	if e.GitHubPrivateKeyPath == "" {
-		return fmt.Errorf("GITHUB_PRIVATE_KEY_PATH is required")
+	if e.GitHubToken == "" {
+		return fmt.Errorf("GITHUB_TOKEN is required")
 	}
 
 	if e.GitHubWebhookSecret == "" {
