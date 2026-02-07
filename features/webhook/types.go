@@ -23,11 +23,11 @@ type WorkflowResult struct {
 
 // WebhookEvent represents a GitHub webhook event
 type WebhookEvent struct {
-	Type        string
-	Action      string
-	PullRequest *PullRequestPayload
-	CheckSuite  *CheckSuitePayload
-	WorkflowRun *WorkflowRunPayload
+	Type         string
+	Action       string
+	PullRequest  *PullRequestPayload
+	CheckSuite   *CheckSuitePayload
+	WorkflowRun  *WorkflowRunPayload
 	Installation *InstallationPayload
 }
 

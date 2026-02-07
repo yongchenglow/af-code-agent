@@ -104,14 +104,14 @@ func FetchPRFilesReasoner(ctx context.Context, input map[string]any) (any, error
 	// For Phase 1, return mock data
 	mockFiles := []any{
 		map[string]any{
-			"filename": "main.go",
-			"status":   "modified",
+			"filename":  "main.go",
+			"status":    "modified",
 			"additions": 10,
 			"deletions": 5,
 		},
 		map[string]any{
-			"filename": "config.go",
-			"status":   "added",
+			"filename":  "config.go",
+			"status":    "added",
 			"additions": 50,
 			"deletions": 0,
 		},

@@ -62,17 +62,17 @@ func TestExtractCodeFromResponse(t *testing.T) {
 			want:     "fmt.Println(\"hello\")",
 		},
 		{
-			name: "code with markdown",
+			name:     "code with markdown",
 			response: "```go\nfmt.Println(\"hello\")\n```",
 			want:     "fmt.Println(\"hello\")",
 		},
 		{
-			name: "code with markdown no language",
+			name:     "code with markdown no language",
 			response: "```\nfmt.Println(\"hello\")\n```",
 			want:     "fmt.Println(\"hello\")",
 		},
 		{
-			name: "code with explanation",
+			name:     "code with explanation",
 			response: "Here's the fix:\n```python\nprint(\"hello\")\n```\nThis fixes the issue.",
 			want:     "print(\"hello\")",
 		},

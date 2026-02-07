@@ -30,45 +30,45 @@ func TestConfigValidation(t *testing.T) {
 		{
 			name: "valid safe mode",
 			config: &Config{
-				Agent: AgentConfig{Mode: "safe"},
+				Agent:      AgentConfig{Mode: "safe"},
 				Validation: ValidationConfig{MaxFixAttempts: 3},
-				AI: AIConfig{Temperature: 0.2},
+				AI:         AIConfig{Temperature: 0.2},
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid yolo mode",
 			config: &Config{
-				Agent: AgentConfig{Mode: "yolo"},
+				Agent:      AgentConfig{Mode: "yolo"},
 				Validation: ValidationConfig{MaxFixAttempts: 3},
-				AI: AIConfig{Temperature: 0.2},
+				AI:         AIConfig{Temperature: 0.2},
 			},
 			wantErr: false,
 		},
 		{
 			name: "invalid mode",
 			config: &Config{
-				Agent: AgentConfig{Mode: "invalid"},
+				Agent:      AgentConfig{Mode: "invalid"},
 				Validation: ValidationConfig{MaxFixAttempts: 3},
-				AI: AIConfig{Temperature: 0.2},
+				AI:         AIConfig{Temperature: 0.2},
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid max attempts",
 			config: &Config{
-				Agent: AgentConfig{Mode: "safe"},
+				Agent:      AgentConfig{Mode: "safe"},
 				Validation: ValidationConfig{MaxFixAttempts: 0},
-				AI: AIConfig{Temperature: 0.2},
+				AI:         AIConfig{Temperature: 0.2},
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid temperature",
 			config: &Config{
-				Agent: AgentConfig{Mode: "safe"},
+				Agent:      AgentConfig{Mode: "safe"},
 				Validation: ValidationConfig{MaxFixAttempts: 3},
-				AI: AIConfig{Temperature: 3.0},
+				AI:         AIConfig{Temperature: 3.0},
 			},
 			wantErr: true,
 		},

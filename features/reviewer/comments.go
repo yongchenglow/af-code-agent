@@ -22,13 +22,13 @@ func NewCommentPoster(client *github.Client) *CommentPoster {
 
 // ReviewComment represents a code review comment
 type ReviewComment struct {
-	FilePath   string
-	Line       int
-	Body       string
-	IssueID    string
-	Severity   string
-	CommitSHA  string
-	Side       string // "RIGHT" or "LEFT"
+	FilePath  string
+	Line      int
+	Body      string
+	IssueID   string
+	Severity  string
+	CommitSHA string
+	Side      string // "RIGHT" or "LEFT"
 }
 
 // PostReview posts a complete code review with all comments

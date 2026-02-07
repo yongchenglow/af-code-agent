@@ -15,8 +15,8 @@ import (
 
 // Client wraps the GitHub API client
 type Client struct {
-	client *github.Client
-	appID  int64
+	client     *github.Client
+	appID      int64
 	privateKey *rsa.PrivateKey
 }
 
@@ -124,14 +124,14 @@ func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // PRContext contains pull request metadata
 type PRContext struct {
-	Owner        string
-	Repo         string
-	Number       int
-	Branch       string
-	BaseBranch   string
-	Author       string
-	Title        string
-	Files        []string
+	Owner          string
+	Repo           string
+	Number         int
+	Branch         string
+	BaseBranch     string
+	Author         string
+	Title          string
+	Files          []string
 	InstallationID int64
 }
 

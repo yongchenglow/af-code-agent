@@ -9,21 +9,21 @@ import (
 // MockGitHubClient provides a mock GitHub client for testing
 type MockGitHubClient struct {
 	// PR data
-	PRData       *github.PullRequest
-	PRFiles      []*github.CommitFile
-	PRErr        error
+	PRData  *github.PullRequest
+	PRFiles []*github.CommitFile
+	PRErr   error
 
 	// Comment data
-	Comments     []*github.PullRequestComment
-	CommentErr   error
+	Comments   []*github.PullRequestComment
+	CommentErr error
 
 	// CI Status
-	CIStatus     string
-	CIErr        error
+	CIStatus string
+	CIErr    error
 
 	// Created resources
-	CreatedBranch string
-	CreatedPR     *github.PullRequest
+	CreatedBranch   string
+	CreatedPR       *github.PullRequest
 	CreatedComments []string
 }
 
@@ -97,8 +97,8 @@ func NewMockGitHubClient() *MockGitHubClient {
 				Patch:     github.String("@@ -1,5 +1,10 @@\n func test() {\n+  // new code\n }"),
 			},
 		},
-		CIStatus: "success",
-		Comments: []*github.PullRequestComment{},
+		CIStatus:        "success",
+		Comments:        []*github.PullRequestComment{},
 		CreatedComments: []string{},
 	}
 }

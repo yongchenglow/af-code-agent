@@ -2,12 +2,12 @@ package standards
 
 // ValidationReport contains the results of standards validation
 type ValidationReport struct {
-	Violations       []*Violation      `json:"violations"`
-	TotalViolations  int               `json:"total_violations"`
-	ViolationsByType map[string]int    `json:"violations_by_type"`
-	PassedChecks     []string          `json:"passed_checks"`
-	FailedChecks     []string          `json:"failed_checks"`
-	Summary          string            `json:"summary"`
+	Violations       []*Violation   `json:"violations"`
+	TotalViolations  int            `json:"total_violations"`
+	ViolationsByType map[string]int `json:"violations_by_type"`
+	PassedChecks     []string       `json:"passed_checks"`
+	FailedChecks     []string       `json:"failed_checks"`
+	Summary          string         `json:"summary"`
 }
 
 // Violation represents a standards violation
@@ -16,9 +16,9 @@ type Violation struct {
 	FilePath    string `json:"file_path"`
 	Line        int    `json:"line"`
 	Column      int    `json:"column,omitempty"`
-	Type        string `json:"type"`        // coding, documentation, security
-	Rule        string `json:"rule"`        // specific rule violated
-	Severity    string `json:"severity"`    // Error, Warning, Info
+	Type        string `json:"type"`     // coding, documentation, security
+	Rule        string `json:"rule"`     // specific rule violated
+	Severity    string `json:"severity"` // Error, Warning, Info
 	Message     string `json:"message"`
 	Suggestion  string `json:"suggestion,omitempty"`
 	AutoFixable bool   `json:"auto_fixable"`
@@ -37,11 +37,11 @@ type Rule struct {
 
 // RuleContext provides context for rule validation
 type RuleContext struct {
-	FilePath    string
-	Content     string
-	Language    string
-	LineNumber  int
-	Config      interface{}
+	FilePath   string
+	Content    string
+	Language   string
+	LineNumber int
+	Config     interface{}
 }
 
 // Violation types

@@ -42,7 +42,7 @@ type Class struct {
 
 // Metrics contains code quality metrics
 type Metrics struct {
-	LinesOfCode         int
+	LinesOfCode          int
 	CyclomaticComplexity int
 	MaintainabilityIndex float64
 	CommentRatio         float64

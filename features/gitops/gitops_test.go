@@ -144,11 +144,11 @@ func TestGetSeverityEmoji(t *testing.T) {
 
 func TestGenerateSummaryComment(t *testing.T) {
 	tests := []struct {
-		name       string
-		issueCount int
-		fixPRNum   int
-		fixPRURL   string
-		mode       OperationMode
+		name         string
+		issueCount   int
+		fixPRNum     int
+		fixPRURL     string
+		mode         OperationMode
 		wantContains []string
 	}{
 		{

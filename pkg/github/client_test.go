@@ -30,11 +30,11 @@ func generateTestPrivateKey(t *testing.T) (*rsa.PrivateKey, []byte) {
 
 func TestNewClient(t *testing.T) {
 	tests := []struct {
-		name          string
-		appID         string
-		setupKey      func(t *testing.T) string
-		wantErr       bool
-		errContains   string
+		name        string
+		appID       string
+		setupKey    func(t *testing.T) string
+		wantErr     bool
+		errContains string
 	}{
 		{
 			name:  "valid app ID and private key",
@@ -315,7 +315,7 @@ func TestFileChange(t *testing.T) {
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
 		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-		len(s) > len(substr)*2 && findSubstring(s, substr)))
+			len(s) > len(substr)*2 && findSubstring(s, substr)))
 }
 
 func findSubstring(s, substr string) bool {

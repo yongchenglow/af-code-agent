@@ -11,12 +11,12 @@ import (
 
 // RateLimitMonitor monitors GitHub API rate limits
 type RateLimitMonitor struct {
-	client       *github.Client
-	mu           sync.RWMutex
-	lastCheck    time.Time
-	remaining    int
-	limit        int
-	resetTime    time.Time
+	client        *github.Client
+	mu            sync.RWMutex
+	lastCheck     time.Time
+	remaining     int
+	limit         int
+	resetTime     time.Time
 	checkInterval time.Duration
 }
 
@@ -274,10 +274,10 @@ func RetryWithBackoff(
 
 // AdaptiveRateLimiter adjusts rate based on success/failure
 type AdaptiveRateLimiter struct {
-	limiter       *RateLimiter
-	successCount  int
-	failureCount  int
-	mu            sync.Mutex
+	limiter            *RateLimiter
+	successCount       int
+	failureCount       int
+	mu                 sync.Mutex
 	adjustmentInterval int
 }
 

@@ -46,8 +46,8 @@ func TestValidateNoHardcodedSecrets(t *testing.T) {
 	validator := NewValidator(cfg)
 
 	tests := []struct {
-		name              string
-		content           string
+		name               string
+		content            string
 		expectedViolations int
 	}{
 		{

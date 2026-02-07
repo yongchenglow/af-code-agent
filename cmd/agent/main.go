@@ -75,10 +75,10 @@ func main() {
 	log.Println("Registering reasoners...")
 	webhook.RegisterReasoners(app)
 	analyzer.RegisterReasoners(app)
-	reviewer.RegisterReasoners(app)          // Phase 2 ✓
-	standards.RegisterReasoners(app, cfg)    // Phase 2 ✓
-	fixer.RegisterReasoners(app)             // Phase 3 ✓
-	gitops.RegisterReasoners(app, ghClient)  // Phase 3 ✓
+	reviewer.RegisterReasoners(app)         // Phase 2 ✓
+	standards.RegisterReasoners(app, cfg)   // Phase 2 ✓
+	fixer.RegisterReasoners(app)            // Phase 3 ✓
+	gitops.RegisterReasoners(app, ghClient) // Phase 3 ✓
 
 	// Start the agent service
 	log.Println("Starting GitHub Code Agent...")

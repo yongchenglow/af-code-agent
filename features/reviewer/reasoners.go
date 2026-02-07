@@ -99,7 +99,7 @@ func detectSecurityIssuesReasoner(ctx context.Context, reviewer *Reviewer, input
 
 	return map[string]any{
 		"security_issues": issues,
-		"count":          len(issues),
+		"count":           len(issues),
 	}, nil
 }
 

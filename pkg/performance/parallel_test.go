@@ -171,8 +171,8 @@ func TestWorkerPool(t *testing.T) {
 
 func TestNewParallelExecutor(t *testing.T) {
 	tests := []struct {
-		name           string
-		maxConcurrency int
+		name            string
+		maxConcurrency  int
 		wantConcurrency int
 	}{
 		{

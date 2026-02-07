@@ -51,8 +51,8 @@ func validateStandardsReasoner(ctx context.Context, validator *Validator, input 
 	}
 
 	return map[string]any{
-		"report":            report,
-		"total_violations":  report.TotalViolations,
+		"report":             report,
+		"total_violations":   report.TotalViolations,
 		"violations_by_type": report.ViolationsByType,
 	}, nil
 }
