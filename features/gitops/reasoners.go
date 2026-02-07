@@ -63,6 +63,12 @@ func RegisterReasoners(app *agent.Agent, ghClient *github.Client) {
 			return postReviewWithFixesReasoner(ctx, gitops, input)
 		},
 		agent.WithDescription("Orchestrates posting review comments and applying fixes"))
+
+	app.RegisterReasoner("check_pr_exists",
+		func(ctx context.Context, input map[string]any) (any, error) {
+			return checkPRExistsReasoner(ctx, gitops, input)
+		},
+		agent.WithDescription("Checks if a PR exists for a given branch"))
 }
 
 // createBranchReasoner creates a new Git branch
@@ -268,6 +274,41 @@ func postReviewWithFixesReasoner(ctx context.Context, gitops *GitOps, input map[
 	}, nil
 }
 
+// checkPRExistsReasoner checks if a PR exists for a given branch
+func checkPRExistsReasoner(ctx context.Context, gitops *GitOps, input map[string]any) (any, error) {
+	repo := getString(input, "repo")
+	branch := getString(input, "branch")
+
+	if repo == "" || branch == "" {
+		return nil, fmt.Errorf("repo and branch are required")
+	}
+
+	// Parse owner/repo
+	owner, repoName, err := parseRepo(repo)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check for existing PRs from this branch
+	pr, exists, err := gitops.ghClient.FindPRByBranch(ctx, owner, repoName, branch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for existing PR: %w", err)
+	}
+
+	if !exists {
+		return map[string]any{
+			"exists": false,
+		}, nil
+	}
+
+	return map[string]any{
+		"exists":    true,
+		"pr_number": pr.Number,
+		"pr_url":    pr.HTMLURL,
+		"title":     pr.Title,
+	}, nil
+}
+
 // Helper functions
 func getString(m map[string]any, key string) string {
 	if v, ok := m[key].(string); ok {
@@ -294,4 +335,25 @@ func getInt64(m map[string]any, key string) int64 {
 		return int64(v)
 	}
 	return 0
+}
+
+func parseRepo(fullRepo string) (owner, repo string, err error) {
+	parts := splitString(fullRepo, "/")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid repo format, expected owner/repo, got %s", fullRepo)
+	}
+	return parts[0], parts[1], nil
+}
+
+func splitString(s, sep string) []string {
+	var result []string
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == sep[0] {
+			result = append(result, s[start:i])
+			start = i + 1
+		}
+	}
+	result = append(result, s[start:])
+	return result
 }

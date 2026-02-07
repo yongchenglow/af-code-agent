@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
@@ -46,6 +47,9 @@ func main() {
 	// export AI_MODEL="deepseek/deepseek-chat"
 	aiConfig := ai.DefaultConfig() // Reads from environment
 
+	// Set 10 minute timeout for AI requests (DeepSeek can be slow)
+	aiConfig.Timeout = 10 * time.Minute
+
 	// Create AgentField agent
 	app, err := agent.New(agent.Config{
 		NodeID:        "github-code-agent",
@@ -70,6 +74,7 @@ func main() {
 	// Store config in context for reasoners to access
 	ctx := context.WithValue(context.Background(), "config", cfg)
 	ctx = context.WithValue(ctx, "agent", app)
+	ctx = context.WithValue(ctx, "github_client", ghClientWrapper)
 
 	// Register all feature reasoners
 	log.Println("Registering reasoners...")
@@ -81,7 +86,7 @@ func main() {
 	gitops.RegisterReasoners(app, ghClient) // Phase 3 ✓
 
 	// Create a wrapper handler that routes between webhook and AgentField
-	webhookHandler := webhook.NewServer(app, envCfg.GitHubWebhookSecret)
+	webhookHandler := webhook.NewServer(app, envCfg.GitHubWebhookSecret, ghClientWrapper)
 	agentFieldHandler := app.Handler()
 
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

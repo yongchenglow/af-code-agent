@@ -8,6 +8,7 @@ agent:
 # Webhook triggers
 webhooks:
   triggers:
+    - push
     - pull_request.opened
     - pull_request.synchronize
     - check_suite.completed

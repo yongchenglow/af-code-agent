@@ -3,8 +3,10 @@ package reviewer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
@@ -41,13 +43,20 @@ func (r *Reviewer) ReviewCode(ctx context.Context, files []*analyzer.FileChange,
 	// Build review prompt
 	prompt := buildReviewPrompt(reviewableFiles, prContext)
 
+	// Create context with 10 minute timeout for large reviews
+	aiCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+
 	// Use AgentField's built-in AI method
-	response, err := r.agent.AI(ctx, prompt,
+	response, err := r.agent.AI(aiCtx, prompt,
 		ai.WithSystem(buildReviewSystemPrompt()),
 		ai.WithTemperature(0.2),
 		ai.WithMaxTokens(4000))
 
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("AI review timeout: request exceeded 10 minute limit: %w", err)
+		}
 		return nil, fmt.Errorf("AI review failed: %w", err)
 	}
 
@@ -74,13 +83,20 @@ func (r *Reviewer) DetectSecurityIssues(ctx context.Context, files []*analyzer.F
 	// Build security-focused prompt
 	prompt := buildSecurityPrompt(codeFiles)
 
+	// Create context with 10 minute timeout for security analysis
+	aiCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+
 	// Use AI for security analysis with lower temperature for consistency
-	response, err := r.agent.AI(ctx, prompt,
+	response, err := r.agent.AI(aiCtx, prompt,
 		ai.WithSystem(buildSecuritySystemPrompt()),
 		ai.WithTemperature(0.1),
 		ai.WithMaxTokens(3000))
 
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("security analysis timeout: request exceeded 10 minute limit: %w", err)
+		}
 		return nil, fmt.Errorf("security analysis failed: %w", err)
 	}
 
@@ -193,18 +209,24 @@ func buildReviewPrompt(files []*analyzer.FileChange, prContext map[string]interf
 		builder.WriteString(fmt.Sprintf("File: %s (Language: %s, +%d -%d)\n",
 			file.Filename, file.Language, file.Additions, file.Deletions))
 
-		if file.Content != "" {
-			// Truncate very large files
+		// Use patch (diff) instead of full content when available - much smaller
+		if file.Patch != "" {
+			// Truncate patches if too long
+			patch := file.Patch
+			if len(patch) > 800 {
+				patch = patch[:800] + "\n... (truncated)"
+			}
+			builder.WriteString("Diff:\n```diff\n")
+			builder.WriteString(patch)
+			builder.WriteString("\n```\n\n")
+		} else if file.Content != "" {
+			// Only send content if no patch available, and keep it small
 			content := file.Content
-			if len(content) > 3000 {
-				content = content[:3000] + "\n... (truncated)"
+			if len(content) > 800 {
+				content = content[:800] + "\n... (truncated)"
 			}
 			builder.WriteString("```" + file.Language + "\n")
 			builder.WriteString(content)
-			builder.WriteString("\n```\n\n")
-		} else if file.Patch != "" {
-			builder.WriteString("Diff:\n```diff\n")
-			builder.WriteString(file.Patch)
 			builder.WriteString("\n```\n\n")
 		}
 	}

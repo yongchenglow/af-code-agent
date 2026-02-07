@@ -45,22 +45,41 @@ func (gh *GitHubClient) CreatePullRequest(ctx context.Context, owner, repo, titl
 	}, nil
 }
 
-// AddReviewComment posts a review comment to a PR
+// AddReviewComment posts a review comment to a PR using the Review API
 func (gh *GitHubClient) AddReviewComment(ctx context.Context, owner, repo string, prNumber int, comment *ReviewComment) (int64, error) {
 	body := formatCommentBody(comment)
 
-	ghComment := &github.PullRequestComment{
-		Path: github.String(comment.FilePath),
-		Line: github.Int(comment.Line),
-		Body: github.String(body),
+	// Get the latest commit SHA for the PR
+	pr, _, err := gh.client.PullRequests.Get(ctx, owner, repo, prNumber)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get PR: %w", err)
 	}
 
-	created, _, err := gh.client.PullRequests.CreateComment(ctx, owner, repo, prNumber, ghComment)
+	commitSHA := pr.GetHead().GetSHA()
+
+	// Create a review with a single comment
+	// Use Side: "RIGHT" to comment on the new code
+	reviewComment := &github.DraftReviewComment{
+		Path: github.String(comment.FilePath),
+		Body: github.String(body),
+		Line: github.Int(comment.Line),
+		Side: github.String("RIGHT"), // Comment on new code (additions)
+	}
+
+	review := &github.PullRequestReviewRequest{
+		CommitID: github.String(commitSHA),
+		Body:     github.String("Automated code review"),
+		Event:    github.String("COMMENT"), // Use COMMENT instead of APPROVE/REQUEST_CHANGES
+		Comments: []*github.DraftReviewComment{reviewComment},
+	}
+
+	createdReview, _, err := gh.client.PullRequests.CreateReview(ctx, owner, repo, prNumber, review)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create review comment: %w", err)
 	}
 
-	return created.GetID(), nil
+	// Return the review ID (we'll need to track individual comments differently)
+	return createdReview.GetID(), nil
 }
 
 // UpdateReviewComment updates an existing comment with fix link
@@ -124,6 +143,39 @@ func getSeverityEmoji(severity string) string {
 	default:
 		return "⚪"
 	}
+}
+
+// FindPRByBranch finds an open PR for the given head branch
+func (gh *GitHubClient) FindPRByBranch(ctx context.Context, owner, repo, branch string) (*PullRequestInfo, bool, error) {
+	opts := &github.PullRequestListOptions{
+		State: "open",
+		Head:  fmt.Sprintf("%s:%s", owner, branch),
+		ListOptions: github.ListOptions{
+			PerPage: 10,
+		},
+	}
+
+	prs, _, err := gh.client.PullRequests.List(ctx, owner, repo, opts)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to list pull requests: %w", err)
+	}
+
+	if len(prs) == 0 {
+		return nil, false, nil
+	}
+
+	// Return the first matching PR
+	pr := prs[0]
+	return &PullRequestInfo{
+		Number:     pr.GetNumber(),
+		Title:      pr.GetTitle(),
+		Body:       pr.GetBody(),
+		HeadBranch: pr.GetHead().GetRef(),
+		BaseBranch: pr.GetBase().GetRef(),
+		State:      pr.GetState(),
+		URL:        pr.GetURL(),
+		HTMLURL:    pr.GetHTMLURL(),
+	}, true, nil
 }
 
 // GenerateSummaryComment creates a summary comment for the original PR

@@ -157,8 +157,12 @@ func generateSingleFix(ctx context.Context, agentInstance *agent.Agent, issue ma
 			strings.Join(previousErrors, "\n"))
 	}
 
+	// Create context with 10 minute timeout for fix generation
+	aiCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+
 	// Call AI to generate fix
-	response, err := agentInstance.AI(ctx, prompt,
+	response, err := agentInstance.AI(aiCtx, prompt,
 		ai.WithSystem(buildFixSystemPrompt()),
 		ai.WithTemperature(DefaultTemperature),
 		ai.WithMaxTokens(DefaultMaxTokens))

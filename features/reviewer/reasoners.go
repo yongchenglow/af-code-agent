@@ -63,9 +63,32 @@ func reviewCodeReasoner(ctx context.Context, reviewer *Reviewer, input map[strin
 		return nil, err
 	}
 
+	// Convert issues to []any for easier processing downstream
+	// Note: Use float64 for numeric values since JSON unmarshaling uses float64
+	issuesAny := make([]any, len(report.Issues))
+	for i, issue := range report.Issues {
+		issuesAny[i] = map[string]any{
+			"id":          issue.ID,
+			"file_path":   issue.FilePath,
+			"line":        float64(issue.Line), // Convert to float64 for JSON compatibility
+			"severity":    issue.Severity,
+			"category":    issue.Category,
+			"title":       issue.Title,
+			"description": issue.Description,
+			"suggestion":  issue.Suggestion,
+		}
+	}
+
 	return map[string]any{
-		"report": report,
-		"model":  report.Model,
+		"report": map[string]any{
+			"issues":              issuesAny,
+			"summary":             report.Summary,
+			"total_issues":        report.TotalIssues,
+			"issues_by_severity":  report.IssuesBySeverity,
+			"issues_by_category":  report.IssuesByCategory,
+			"model":               report.Model,
+		},
+		"model": report.Model,
 	}, nil
 }
 

@@ -100,3 +100,63 @@ func CheckCIStatus(ctx context.Context, client *github.Client, owner, repo, ref 
 	}
 	return status.GetState(), nil
 }
+
+// GetFileContent fetches the content of a file from a specific commit/branch
+func GetFileContent(ctx context.Context, client *github.Client, owner, repo, path, ref string) (string, error) {
+	fileContent, _, _, err := client.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{
+		Ref: ref,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to get file content for %s: %w", path, err)
+	}
+
+	if fileContent == nil {
+		return "", fmt.Errorf("file not found: %s", path)
+	}
+
+	content, err := fileContent.GetContent()
+	if err != nil {
+		return "", fmt.Errorf("failed to decode file content: %w", err)
+	}
+
+	return content, nil
+}
+
+// DetectLanguage detects the programming language from file extension
+func DetectLanguage(filename string) string {
+	// Simple extension-based detection
+	ext := ""
+	for i := len(filename) - 1; i >= 0; i-- {
+		if filename[i] == '.' {
+			ext = filename[i+1:]
+			break
+		}
+	}
+
+	switch ext {
+	case "go":
+		return "go"
+	case "py":
+		return "python"
+	case "js":
+		return "javascript"
+	case "ts":
+		return "typescript"
+	case "java":
+		return "java"
+	case "rb":
+		return "ruby"
+	case "rs":
+		return "rust"
+	case "cpp", "cc", "cxx":
+		return "cpp"
+	case "c":
+		return "c"
+	case "cs":
+		return "csharp"
+	case "php":
+		return "php"
+	default:
+		return "text"
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
+	"github.com/yourorg/github-code-agent/pkg/config"
 )
 
 // RegisterReasoners registers all webhook-related reasoners
@@ -68,6 +69,8 @@ func HandleWebhook(ctx context.Context, input map[string]any) (any, error) {
 	switch eventType {
 	case "pull_request":
 		return handlePullRequestEvent(ctx, payload)
+	case "push":
+		return handlePushEvent(ctx, payload)
 	case "check_suite":
 		return handleCheckSuiteEvent(ctx, payload)
 	case "workflow_run":
@@ -111,18 +114,177 @@ func HandlePREvent(ctx context.Context, input map[string]any) (any, error) {
 		"pr_number": int(prNumber),
 	}
 
-	result, err := agentInstance.CallLocal(ctx, "analyze_pr", analyzerInput)
+	analysisResult, err := agentInstance.CallLocal(ctx, "analyze_pr", analyzerInput)
 	if err != nil {
 		log.Printf("Failed to analyze PR: %v", err)
 		return nil, err
 	}
 
-	log.Printf("PR analysis completed: %v", result)
+	log.Printf("PR analysis completed: %v", analysisResult)
+
+	// Extract files from analysis result
+	analysisData, ok := analysisResult.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid analysis result format")
+	}
+
+	files, ok := analysisData["files"].([]any)
+	if !ok || len(files) == 0 {
+		log.Printf("No files to review in PR #%d", int(prNumber))
+		return map[string]any{
+			"success": true,
+			"message": fmt.Sprintf("PR #%d has no files to review", int(prNumber)),
+			"result":  analysisResult,
+		}, nil
+	}
+
+	// Call review_code reasoner to review the files
+	reviewInput := map[string]any{
+		"files": files,
+		"pr_context": map[string]any{
+			"repo":      repo,
+			"pr_number": int(prNumber),
+		},
+	}
+
+	reviewResult, err := agentInstance.CallLocal(ctx, "review_code", reviewInput)
+	if err != nil {
+		log.Printf("Failed to review code: %v", err)
+		return nil, err
+	}
+
+	log.Printf("Code review completed for PR #%d", int(prNumber))
+
+	// Extract issues from review result
+	reviewData, ok := reviewResult.(map[string]any)
+	if !ok {
+		log.Printf("Review result is not a map: %T", reviewResult)
+		return nil, fmt.Errorf("invalid review result format")
+	}
+
+	log.Printf("Review data keys: %v", getKeys(reviewData))
+
+	reportData, ok := reviewData["report"].(map[string]any)
+	if !ok {
+		log.Printf("No report in review result for PR #%d (report type: %T)", int(prNumber), reviewData["report"])
+		return map[string]any{
+			"success":        true,
+			"message":        fmt.Sprintf("PR #%d review completed (no report data)", int(prNumber)),
+			"analysis":       analysisResult,
+			"review":         reviewResult,
+			"files_reviewed": len(files),
+		}, nil
+	}
+
+	log.Printf("Report data keys: %v", getKeys(reportData))
+
+	issues, ok := reportData["issues"].([]any)
+	if !ok {
+		log.Printf("Issues not found or wrong type: %T", reportData["issues"])
+	}
+	if !ok || len(issues) == 0 {
+		log.Printf("No issues found in PR #%d (ok=%v, len=%d)", int(prNumber), ok, len(issues))
+		return map[string]any{
+			"success":        true,
+			"message":        fmt.Sprintf("PR #%d review completed (no issues found)", int(prNumber)),
+			"analysis":       analysisResult,
+			"review":         reviewResult,
+			"files_reviewed": len(files),
+		}, nil
+	}
+
+	log.Printf("Found %d issues in PR #%d, generating fixes...", len(issues), int(prNumber))
+
+	// Generate fixes with validation
+	fixerInput := map[string]any{
+		"issues": issues,
+		"files":  files,
+	}
+
+	fixerResult, err := agentInstance.CallLocal(ctx, "generate_fixes_with_validation", fixerInput)
+	if err != nil {
+		log.Printf("Failed to generate fixes: %v", err)
+		// Continue even if fixes fail - we still want to post review comments
+	}
+
+	log.Printf("Fix generation completed for PR #%d", int(prNumber))
+
+	// Extract successful fixes (patches)
+	var patches []any
+	if fixerResult != nil {
+		if fixerData, ok := fixerResult.(map[string]any); ok {
+			if successfulFixes, ok := fixerData["successful_fixes"].([]any); ok {
+				patches = successfulFixes
+			}
+		}
+	}
+
+	// Get config from context to determine mode
+	cfg := GetConfigFromContext(ctx)
+	mode := "safe" // default
+	if cfg != nil && cfg.Agent.Mode == "yolo" {
+		mode = "yolo"
+	}
+
+	// Parse owner/repo
+	parts := []string{}
+	for i := 0; i < len(repo); i++ {
+		if repo[i] == '/' {
+			parts = append(parts, repo[:i])
+			parts = append(parts, repo[i+1:])
+			break
+		}
+	}
+	if len(parts) != 2 {
+		log.Printf("Invalid repo format: %s", repo)
+		return map[string]any{
+			"success":        true,
+			"message":        fmt.Sprintf("PR #%d review completed but could not post to GitHub (invalid repo format)", int(prNumber)),
+			"analysis":       analysisResult,
+			"review":         reviewResult,
+			"fixes":          fixerResult,
+			"files_reviewed": len(files),
+			"issues_found":   len(issues),
+		}, nil
+	}
+	owner, repoName := parts[0], parts[1]
+
+	// Post review comments and apply fixes using the gitops workflow
+	workflowInput := map[string]any{
+		"owner":      owner,
+		"repo":       repoName,
+		"repo_path":  "/tmp/" + repoName, // Temporary path for git operations
+		"pr_number":  int(prNumber),
+		"mode":       mode,
+		"issues":     issues,
+		"patches":    patches,
+	}
+
+	workflowResult, err := agentInstance.CallLocal(ctx, "post_review_with_fixes", workflowInput)
+	if err != nil {
+		log.Printf("Failed to post review and apply fixes: %v", err)
+		return map[string]any{
+			"success":        false,
+			"message":        fmt.Sprintf("PR #%d review completed but failed to post to GitHub: %v", int(prNumber), err),
+			"analysis":       analysisResult,
+			"review":         reviewResult,
+			"fixes":          fixerResult,
+			"files_reviewed": len(files),
+			"issues_found":   len(issues),
+		}, nil
+	}
+
+	log.Printf("Successfully posted review and fixes for PR #%d", int(prNumber))
 
 	return map[string]any{
-		"success": true,
-		"message": fmt.Sprintf("PR #%d review workflow initiated", int(prNumber)),
-		"result":  result,
+		"success":        true,
+		"message":        fmt.Sprintf("PR #%d review workflow completed with %d issues found and posted to GitHub", int(prNumber), len(issues)),
+		"analysis":       analysisResult,
+		"review":         reviewResult,
+		"fixes":          fixerResult,
+		"workflow":       workflowResult,
+		"files_reviewed": len(files),
+		"issues_found":   len(issues),
 	}, nil
 }
 
@@ -192,6 +354,54 @@ func handleCheckSuiteEvent(ctx context.Context, payload map[string]any) (any, er
 	return agentInstance.CallLocal(ctx, "handle_check_suite", checkInput)
 }
 
+func handlePushEvent(ctx context.Context, payload map[string]any) (any, error) {
+	ref, _ := payload["ref"].(string)
+	repo, _ := payload["repository"].(map[string]any)
+	repoFullName, _ := repo["full_name"].(string)
+	commits, _ := payload["commits"].([]any)
+
+	log.Printf("Push event received: %s to %s (%d commits)", ref, repoFullName, len(commits))
+
+	// Only process pushes to feature branches (not main/master)
+	if ref == "refs/heads/main" || ref == "refs/heads/master" {
+		return map[string]any{
+			"success": true,
+			"message": "Ignoring push to main/master branch",
+		}, nil
+	}
+
+	// Extract branch name from ref (refs/heads/branch-name -> branch-name)
+	branchName := ref
+	if len(ref) > 11 && ref[:11] == "refs/heads/" {
+		branchName = ref[11:]
+	}
+
+	agentInstance := GetAgentFromContext(ctx)
+	if agentInstance == nil {
+		return nil, fmt.Errorf("agent not found in context")
+	}
+
+	// Call analyze_push reasoner to analyze the commits and create/update PR
+	pushInput := map[string]any{
+		"repo":        repoFullName,
+		"branch":      branchName,
+		"commits":     commits,
+		"head_commit": payload["head_commit"],
+	}
+
+	result, err := agentInstance.CallLocal(ctx, "analyze_push", pushInput)
+	if err != nil {
+		log.Printf("Failed to analyze push: %v", err)
+		return nil, err
+	}
+
+	return map[string]any{
+		"success": true,
+		"message": fmt.Sprintf("Push to %s analyzed successfully", branchName),
+		"result":  result,
+	}, nil
+}
+
 func handleWorkflowRunEvent(ctx context.Context, payload map[string]any) (any, error) {
 	workflowRun, ok := payload["workflow_run"].(map[string]any)
 	if !ok {
@@ -218,6 +428,23 @@ func ValidateWebhookSignature(payload map[string]any, signature, secret string) 
 func GetAgentFromContext(ctx context.Context) *agent.Agent {
 	if agentInstance, ok := ctx.Value("agent").(*agent.Agent); ok {
 		return agentInstance
+	}
+	return nil
+}
+
+// getKeys returns the keys of a map for debugging
+func getKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// GetConfigFromContext retrieves the config instance from context
+func GetConfigFromContext(ctx context.Context) *config.Config {
+	if cfg, ok := ctx.Value("config").(*config.Config); ok {
+		return cfg
 	}
 	return nil
 }
