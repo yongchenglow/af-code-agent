@@ -57,17 +57,16 @@ github-code-agent/
 - CI/CD status checking
 - Proper HTTP transport with authentication headers
 
-### ✅ 4. DeepSeek AI Integration
+### ✅ 4. AI Integration via AgentField SDK
 
-**Files:**
-- `pkg/deepseek/client.go` - DeepSeek client wrapper
-
-**Features:**
-- Client initialization with configuration
-- Message structure for chat API
-- Review generation method (placeholder)
-- Fix generation method (placeholder)
-- Ready for Phase 2 API integration
+**Implementation:**
+- AI handled by AgentField SDK's built-in AI client
+- Supports any OpenAI-compatible API (DeepSeek, OpenRouter, etc.)
+- Configuration via environment variables:
+  - `AI_API_KEY` - API key for the AI service
+  - `AI_BASE_URL` - Base URL for the API
+  - `AI_MODEL` - Model name to use
+- No custom wrapper needed - AgentField provides the interface
 
 ### ✅ 5. Webhook Handler
 

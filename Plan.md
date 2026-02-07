@@ -1450,10 +1450,10 @@ Allow users to customize behavior via PR labels:
   - Set up `go.mod` with dependencies
   - Create feature directories
   - Set up AgentField Go SDK
-- [ ] Set up DeepSeek client integration
-  - Install `github.com/go-deepseek/deepseek`
-  - Create wrapper in `pkg/deepseek/`
-  - Test API connectivity
+- [x] Set up AI integration via AgentField SDK
+  - AgentField SDK handles AI client (OpenAI-compatible APIs)
+  - Configure via environment variables (API_KEY, BASE_URL, MODEL)
+  - No custom wrapper needed
 - [ ] Implement Webhook Handler (`features/webhook/`)
   - Webhook signature validation
   - Event parsing (pull_request, check_suite, workflow_run)

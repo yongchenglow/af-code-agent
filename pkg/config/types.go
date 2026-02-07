@@ -88,13 +88,12 @@ type LanguageSettings struct {
 	Frameworks       []string `yaml:"frameworks,omitempty"`
 }
 
-// AIConfig configures the AI model
+// AIConfig configures AI model defaults (actual AI is handled by AgentField SDK)
+// These are used as fallback defaults if environment variables are not set
 type AIConfig struct {
-	Provider    string  `yaml:"provider"`
-	Model       string  `yaml:"model"`
-	BaseURL     string  `yaml:"base_url"`
-	Temperature float64 `yaml:"temperature"`
-	MaxTokens   int     `yaml:"max_tokens"`
+	Model       string  `yaml:"model"`        // Default model name
+	Temperature float64 `yaml:"temperature"`  // Default temperature
+	MaxTokens   int     `yaml:"max_tokens"`   // Default max tokens
 }
 
 // NotificationConfig configures notifications

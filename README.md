@@ -15,7 +15,7 @@ This agent operates in two modes:
 
 - Go project structure with feature-based organization
 - Configuration system (YAML + environment variables)
-- DeepSeek AI client wrapper (placeholder for API integration)
+- AgentField SDK integration for AI (supports any OpenAI-compatible API)
 - GitHub API client with App authentication
 - Webhook handler with signature validation
 - Event debouncing for rapid commits
@@ -54,8 +54,6 @@ github-code-agent/
 ├── pkg/
 │   ├── github/                        # GitHub API client
 │   │   └── client.go
-│   ├── deepseek/                      # DeepSeek AI client
-│   │   └── client.go
 │   └── config/                        # Configuration
 │       ├── config.go
 │       └── types.go
@@ -73,7 +71,7 @@ github-code-agent/
 
 - Go 1.21 or higher
 - GitHub App credentials
-- DeepSeek API key
+- AI API key (DeepSeek, OpenRouter, or any OpenAI-compatible API)
 
 ### Installation
 

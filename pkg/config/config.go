@@ -70,9 +70,7 @@ func DefaultConfig() *Config {
 			},
 		},
 		AI: AIConfig{
-			Provider:    "deepseek",
 			Model:       "deepseek-chat",
-			BaseURL:     "https://api.deepseek.com",
 			Temperature: 0.2,
 			MaxTokens:   4000,
 		},
