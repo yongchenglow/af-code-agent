@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
@@ -79,7 +80,17 @@ func main() {
 	fixer.RegisterReasoners(app)            // Phase 3 ✓
 	gitops.RegisterReasoners(app, ghClient) // Phase 3 ✓
 
-	// Start the agent service
+	// Create custom HTTP server with webhook handler
+	mux := http.NewServeMux()
+
+	// Register the custom webhook handler (validates GitHub signatures)
+	webhook.RegisterWebhookHandler(mux, app, envCfg.GitHubWebhookSecret)
+
+	// Register the AgentField handler for all other routes
+	mux.Handle("/", app.Handler())
+
+	// Start HTTP server
+	port := envCfg.Port
 	log.Println("Starting GitHub Code Agent...")
 	log.Printf("  Node ID: %s", "github-code-agent")
 	log.Printf("  Version: %s", "1.0.0")
@@ -87,9 +98,16 @@ func main() {
 	log.Printf("  AgentField URL: %s", getEnv("AGENTFIELD_URL", "http://localhost:8080"))
 	log.Printf("  AI Model: %s", aiConfig.Model)
 	log.Printf("  Mode: %s", cfg.Agent.Mode)
+	log.Printf("  Listening on port: %s", port)
 
-	// Run will automatically handle CLI mode or server mode
-	if err := app.Run(ctx); err != nil {
+	// Start server
+	server := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
+	}
+
+	log.Printf("Webhook endpoint: http://localhost:%s/webhook", port)
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }

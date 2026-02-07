@@ -30,6 +30,17 @@ func HandleWebhook(ctx context.Context, input map[string]any) (any, error) {
 		return nil, fmt.Errorf("event_type is required")
 	}
 
+	// Get raw payload bytes for signature validation
+	payloadBytes, ok := input["payload_raw"].([]byte)
+	if !ok {
+		// Fallback: try to get as string and convert
+		if payloadStr, ok := input["payload_raw"].(string); ok {
+			payloadBytes = []byte(payloadStr)
+		} else {
+			return nil, fmt.Errorf("payload_raw is required for signature validation")
+		}
+	}
+
 	payload, ok := input["payload"].(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("payload is required")
@@ -37,17 +48,17 @@ func HandleWebhook(ctx context.Context, input map[string]any) (any, error) {
 
 	signature, ok := input["signature"].(string)
 	if !ok {
-		return nil, fmt.Errorf("signature is required")
+		return nil, fmt.Errorf("signature is required (X-Hub-Signature-256 header)")
 	}
 
-	// Get webhook secret from config
+	// Get webhook secret from environment
 	webhookSecret, ok := input["webhook_secret"].(string)
 	if !ok {
 		return nil, fmt.Errorf("webhook_secret is required")
 	}
 
-	// Validate webhook signature
-	if err := ValidateWebhookSignature(payload, signature, webhookSecret); err != nil {
+	// Validate webhook signature using the correct implementation
+	if err := ValidateSignature(payloadBytes, signature, webhookSecret); err != nil {
 		return nil, fmt.Errorf("webhook validation failed: %w", err)
 	}
 
@@ -197,11 +208,10 @@ func handleWorkflowRunEvent(ctx context.Context, payload map[string]any) (any, e
 	}, nil
 }
 
-// ValidateWebhookSignature validates the GitHub webhook signature
+// ValidateWebhookSignature is deprecated - use ValidateSignature from validator.go instead
+// Kept for backwards compatibility
 func ValidateWebhookSignature(payload map[string]any, signature, secret string) error {
-	// TODO: Implement HMAC-SHA256 validation
-	// For now, just a placeholder
-	return nil
+	return fmt.Errorf("deprecated: use ValidateSignature with raw payload bytes instead")
 }
 
 // GetAgentFromContext retrieves the agent instance from context
