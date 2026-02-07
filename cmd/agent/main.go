@@ -10,8 +10,13 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/yourorg/github-code-agent/features/analyzer"
+	"github.com/yourorg/github-code-agent/features/fixer"
+	"github.com/yourorg/github-code-agent/features/gitops"
+	"github.com/yourorg/github-code-agent/features/reviewer"
+	"github.com/yourorg/github-code-agent/features/standards"
 	"github.com/yourorg/github-code-agent/features/webhook"
 	"github.com/yourorg/github-code-agent/pkg/config"
+	"github.com/yourorg/github-code-agent/pkg/github"
 )
 
 func main() {
@@ -28,6 +33,12 @@ func main() {
 		cfg = config.DefaultConfig()
 	}
 
+	// Load environment configuration
+	envCfg, err := config.LoadEnvironmentConfig()
+	if err != nil {
+		log.Fatalf("Failed to load environment config: %v", err)
+	}
+
 	// Configure AI (supports OpenAI or OpenRouter)
 	// For DeepSeek via OpenRouter:
 	// export OPENROUTER_API_KEY="sk-or-v1-..."
@@ -39,12 +50,22 @@ func main() {
 		NodeID:        "github-code-agent",
 		Version:       "1.0.0",
 		TeamID:        "code-review",
-		AgentFieldURL: getEnv("AGENTFIELD_URL", "http://localhost:8080"),
+		AgentFieldURL: envCfg.AgentFieldURL,
 		AIConfig:      aiConfig,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create agent: %v", err)
 	}
+
+	// Create GitHub client wrapper
+	ghClientWrapper, err := github.NewClient(envCfg.GitHubAppID, envCfg.GitHubPrivateKeyPath)
+	if err != nil {
+		log.Fatalf("Failed to create GitHub client: %v", err)
+	}
+
+	// Get the basic GitHub client for gitops
+	// In a real scenario, this would be obtained per-installation with proper auth
+	ghClient := ghClientWrapper.GetClient()
 
 	// Store config in context for reasoners to access
 	ctx := context.WithValue(context.Background(), "config", cfg)
@@ -54,10 +75,10 @@ func main() {
 	log.Println("Registering reasoners...")
 	webhook.RegisterReasoners(app)
 	analyzer.RegisterReasoners(app)
-	// reviewer.RegisterReasoners(app)     // Phase 2
-	// standards.RegisterReasoners(app)    // Phase 2
-	// fixer.RegisterReasoners(app)        // Phase 3
-	// gitops.RegisterReasoners(app)       // Phase 3
+	reviewer.RegisterReasoners(app)          // Phase 2 ✓
+	standards.RegisterReasoners(app, cfg)    // Phase 2 ✓
+	fixer.RegisterReasoners(app)             // Phase 3 ✓
+	gitops.RegisterReasoners(app, ghClient)  // Phase 3 ✓
 
 	// Start the agent service
 	log.Println("Starting GitHub Code Agent...")

@@ -46,6 +46,11 @@ func NewClient(appID string, privateKeyPath string) (*Client, error) {
 	}, nil
 }
 
+// GetClient returns the underlying GitHub client
+func (c *Client) GetClient() *github.Client {
+	return c.client
+}
+
 // GetInstallationClient creates a client authenticated as an installation
 func (c *Client) GetInstallationClient(installationID int64) (*github.Client, error) {
 	// Generate JWT for app authentication
