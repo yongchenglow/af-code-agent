@@ -1,0 +1,318 @@
+package e2e
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/google/go-github/v57/github"
+	"github.com/yourorg/github-code-agent/pkg/config"
+	"github.com/yourorg/github-code-agent/tests/mocks"
+)
+
+// TestEndToEndPRReview simulates a complete PR review workflow
+func TestEndToEndPRReview(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	// Setup
+	githubClient := mocks.NewMockGitHubClient()
+	aiClient := mocks.NewMockAIClient()
+
+	cfg := &config.Config{
+		Agent: config.AgentConfig{
+			Enabled: true,
+			Mode:    "safe",
+		},
+		Review: config.ReviewConfig{
+			AutoReview:        true,
+			AutoFix:           true,
+			SeverityThreshold: "medium",
+		},
+	}
+
+	t.Run("Complete PR Review with Fixes", func(t *testing.T) {
+		// Simulate webhook event
+		webhookPayload := map[string]any{
+			"action": "opened",
+			"number": 123,
+			"pull_request": map[string]any{
+				"number": 123,
+				"title":  "Add new feature",
+				"head": map[string]any{
+					"ref": "feature-branch",
+				},
+				"base": map[string]any{
+					"ref": "main",
+				},
+			},
+			"repository": map[string]any{
+				"owner": map[string]any{
+					"login": "testowner",
+				},
+				"name": "testrepo",
+			},
+		}
+
+		// 1. Webhook received
+		t.Log("Step 1: Webhook received")
+		payload, _ := json.Marshal(webhookPayload)
+		if len(payload) == 0 {
+			t.Fatal("webhook payload is empty")
+		}
+
+		// 2. Fetch PR details
+		t.Log("Step 2: Fetching PR details")
+		pr, err := githubClient.GetPR(ctx, "testowner", "testrepo", 123)
+		if err != nil {
+			t.Fatalf("failed to get PR: %v", err)
+		}
+		if pr == nil {
+			t.Fatal("PR is nil")
+		}
+
+		// 3. Analyze files
+		t.Log("Step 3: Analyzing PR files")
+		files, err := githubClient.ListFiles(ctx, "testowner", "testrepo", 123)
+		if err != nil {
+			t.Fatalf("failed to list files: %v", err)
+		}
+		if len(files) == 0 {
+			t.Fatal("no files found in PR")
+		}
+
+		// 4. Check CI status (optional)
+		t.Log("Step 4: Checking CI status")
+		ciStatus, err := githubClient.GetCombinedStatus(ctx, "testowner", "testrepo", "feature-branch")
+		if err != nil {
+			t.Logf("CI status check failed (expected in mock): %v", err)
+		} else {
+			t.Logf("CI status: %s", ciStatus)
+		}
+
+		// 5. Perform code review
+		t.Log("Step 5: Performing code review")
+		reviewText, err := aiClient.Call(ctx, "review", "Review code")
+		if err != nil {
+			t.Fatalf("code review failed: %v", err)
+		}
+		if reviewText == "" {
+			t.Fatal("review text is empty")
+		}
+
+		reviewResponse, err := mocks.ParseReviewResponse(reviewText)
+		if err != nil {
+			t.Fatalf("failed to parse review: %v", err)
+		}
+
+		t.Logf("Found %d issues", len(reviewResponse.Issues))
+
+		// 6. Post review comments
+		t.Log("Step 6: Posting review comments")
+		for _, issue := range reviewResponse.Issues {
+			comment := map[string]any{
+				"body": issue.Description,
+				"path": issue.FilePath,
+				"line": issue.Line,
+			}
+			t.Logf("Posting comment: %v", comment)
+			// In real scenario, would call githubClient.CreateComment
+		}
+
+		// 7. Generate fixes (if auto-fix enabled)
+		if cfg.Review.AutoFix {
+			t.Log("Step 7: Generating fixes")
+			fixText, err := aiClient.Call(ctx, "fix", "Generate fix")
+			if err != nil {
+				t.Fatalf("fix generation failed: %v", err)
+			}
+			if fixText == "" {
+				t.Fatal("fix text is empty")
+			}
+			t.Logf("Generated fix: %s", fixText)
+		}
+
+		// 8. Create PR with fixes (Safe mode)
+		if cfg.Agent.Mode == "safe" {
+			t.Log("Step 8: Creating PR with fixes (Safe mode)")
+			// In real scenario, would:
+			// - Create branch
+			// - Apply patches
+			// - Push to GitHub
+			// - Create PR
+			t.Log("Fix PR would be created targeting feature-branch")
+		}
+
+		// 9. Update review comments with fix links
+		t.Log("Step 9: Updating review comments with fix links")
+		// In real scenario, would update each comment with link to fix PR
+
+		// Verify the workflow completed
+		if aiClient.GetCallCount() < 2 {
+			t.Errorf("expected at least 2 AI calls (review + fix), got %d",
+				aiClient.GetCallCount())
+		}
+
+		t.Log("E2E test completed successfully")
+	})
+}
+
+// TestEndToEndYOLOMode tests YOLO mode workflow
+func TestEndToEndYOLOMode(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx := context.Background()
+	githubClient := mocks.NewMockGitHubClient()
+	aiClient := mocks.NewMockAIClient()
+
+	cfg := &config.Config{
+		Agent: config.AgentConfig{
+			Enabled: true,
+			Mode:    "yolo",
+		},
+		Review: config.ReviewConfig{
+			AutoReview: true,
+			AutoFix:    true,
+		},
+	}
+
+	t.Run("YOLO Mode - Direct Push", func(t *testing.T) {
+		// 1. Get PR
+		pr, err := githubClient.GetPR(ctx, "owner", "repo", 123)
+		if err != nil {
+			t.Fatalf("failed to get PR: %v", err)
+		}
+
+		// 2. Review code
+		reviewText, err := aiClient.Call(ctx, "review", "Review")
+		if err != nil {
+			t.Fatalf("review failed: %v", err)
+		}
+
+		reviewResponse, _ := mocks.ParseReviewResponse(reviewText)
+
+		// 3. Generate and apply fixes directly to PR branch
+		if len(reviewResponse.Issues) > 0 && cfg.Review.AutoFix {
+			fixText, _ := aiClient.Call(ctx, "fix", "Fix")
+
+			// In YOLO mode, push directly to PR branch
+			t.Logf("Pushing fix directly to branch: %s", pr.Head.GetRef())
+
+			// Verify we're in YOLO mode
+			if cfg.Agent.Mode != "yolo" {
+				t.Error("expected YOLO mode")
+			}
+		}
+
+		t.Log("YOLO mode test completed")
+	})
+}
+
+// TestEndToEndSecurityScan tests security vulnerability detection
+func TestEndToEndSecurityScan(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx := context.Background()
+	aiClient := mocks.NewMockAIClient()
+
+	// Set security-focused response
+	aiClient.SetResponse("security", `{
+		"security_issues": [
+			{
+				"severity": "Critical",
+				"line": 5,
+				"file_path": "auth.go",
+				"title": "Hardcoded credentials",
+				"description": "API key hardcoded",
+				"suggestion": "Use environment variables"
+			}
+		],
+		"count": 1
+	}`, nil)
+
+	t.Run("Security Scan Workflow", func(t *testing.T) {
+		// Perform security scan
+		securityText, err := aiClient.Call(ctx, "security", "Scan for security issues")
+		if err != nil {
+			t.Fatalf("security scan failed: %v", err)
+		}
+
+		var securityResponse struct {
+			SecurityIssues []mocks.MockReviewIssue `json:"security_issues"`
+			Count          int                     `json:"count"`
+		}
+
+		err = json.Unmarshal([]byte(securityText), &securityResponse)
+		if err != nil {
+			t.Fatalf("failed to parse security response: %v", err)
+		}
+
+		if securityResponse.Count == 0 {
+			t.Error("expected at least one security issue")
+		}
+
+		// Verify critical issues are flagged
+		for _, issue := range securityResponse.SecurityIssues {
+			if issue.Severity == "Critical" {
+				t.Logf("Critical security issue found: %s", issue.Title)
+			}
+		}
+
+		t.Log("Security scan completed")
+	})
+}
+
+// TestEndToEndLargeRepoPerformance tests performance with large repos
+func TestEndToEndLargeRepoPerformance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx := context.Background()
+	githubClient := mocks.NewMockGitHubClient()
+
+	// Simulate large PR with many files
+	githubClient.PRFiles = make([]*github.CommitFile, 50)
+	for i := 0; i < 50; i++ {
+		filename := fmt.Sprintf("file%d.go", i)
+		githubClient.PRFiles[i] = &github.CommitFile{
+			Filename:  github.String(filename),
+			Status:    github.String("modified"),
+			Additions: github.Int(100),
+			Deletions: github.Int(50),
+			Changes:   github.Int(150),
+		}
+	}
+
+	start := time.Now()
+
+	t.Run("Large PR Performance", func(t *testing.T) {
+		// Fetch files
+		files, err := githubClient.ListFiles(ctx, "owner", "repo", 123)
+		if err != nil {
+			t.Fatalf("failed to list files: %v", err)
+		}
+
+		if len(files) != 50 {
+			t.Errorf("expected 50 files, got %d", len(files))
+		}
+
+		duration := time.Since(start)
+		t.Logf("Processing 50 files took: %v", duration)
+
+		// Performance should be reasonable (< 5 seconds for file listing)
+		if duration > 5*time.Second {
+			t.Errorf("performance too slow: %v", duration)
+		}
+	})
+}

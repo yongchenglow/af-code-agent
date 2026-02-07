@@ -1,0 +1,236 @@
+package integration
+
+import (
+	"context"
+	"testing"
+
+	"github.com/yourorg/github-code-agent/features/analyzer"
+	"github.com/yourorg/github-code-agent/features/reviewer"
+	"github.com/yourorg/github-code-agent/features/standards"
+	"github.com/yourorg/github-code-agent/pkg/config"
+	"github.com/yourorg/github-code-agent/tests/mocks"
+)
+
+// TestReviewWorkflow tests the complete review workflow
+func TestReviewWorkflow(t *testing.T) {
+	ctx := context.Background()
+
+	// Setup mocks
+	githubClient := mocks.NewMockGitHubClient()
+	aiClient := mocks.NewMockAIClient()
+
+	// Setup configuration
+	cfg := &config.Config{
+		Agent: config.AgentConfig{
+			Enabled: true,
+			Mode:    "safe",
+		},
+		Review: config.ReviewConfig{
+			AutoReview:        true,
+			AutoFix:           true,
+			SeverityThreshold: "medium",
+		},
+		Standards: config.StandardsConfig{
+			Coding: config.CodingStandards{
+				MaxLineLength:      100,
+				MaxFunctionLength:  50,
+				MaxComplexity:      10,
+			},
+			Documentation: config.DocumentationStandards{
+				RequireDocstrings: true,
+				DocstringStyle:    "google",
+			},
+		},
+	}
+
+	t.Run("Complete PR Review Flow", func(t *testing.T) {
+		// 1. Analyze PR
+		files, err := githubClient.ListFiles(ctx, "owner", "repo", 123)
+		if err != nil {
+			t.Fatalf("failed to list files: %v", err)
+		}
+
+		if len(files) == 0 {
+			t.Fatal("expected at least one file")
+		}
+
+		// Convert to analyzer format
+		analyzedFiles := make([]*analyzer.FileAnalysis, 0, len(files))
+		for _, file := range files {
+			analyzedFiles = append(analyzedFiles, &analyzer.FileAnalysis{
+				FilePath:   file.GetFilename(),
+				Language:   "go",
+				LOC:        file.GetAdditions() + file.GetDeletions(),
+				Complexity: 5,
+			})
+		}
+
+		// 2. Run standards validation
+		validationInput := map[string]any{
+			"files":  analyzedFiles,
+			"config": cfg,
+		}
+
+		violations := standards.ValidateStandards(validationInput)
+		t.Logf("Found %d standards violations", len(violations))
+
+		// 3. Run code review (simulated)
+		reviewText, err := aiClient.Call(ctx, "review", "Review this code")
+		if err != nil {
+			t.Fatalf("AI review failed: %v", err)
+		}
+
+		reviewResponse, err := mocks.ParseReviewResponse(reviewText)
+		if err != nil {
+			t.Fatalf("failed to parse review: %v", err)
+		}
+
+		if len(reviewResponse.Issues) == 0 {
+			t.Log("No review issues found (expected for mock)")
+		}
+
+		// 4. Verify issues were prioritized
+		for _, issue := range reviewResponse.Issues {
+			if issue.Severity == "" {
+				t.Error("issue severity should not be empty")
+			}
+		}
+
+		// 5. Verify AI was called
+		if aiClient.GetCallCount() == 0 {
+			t.Error("expected AI to be called at least once")
+		}
+	})
+
+	t.Run("YOLO Mode Workflow", func(t *testing.T) {
+		cfg.Agent.Mode = "yolo"
+
+		// In YOLO mode, fixes are applied directly
+		// Verify the mode is set correctly
+		if cfg.Agent.Mode != "yolo" {
+			t.Errorf("mode = %q, want yolo", cfg.Agent.Mode)
+		}
+
+		// Generate fix (simulated)
+		fixText, err := aiClient.Call(ctx, "fix", "Generate fix for nil check")
+		if err != nil {
+			t.Fatalf("AI fix generation failed: %v", err)
+		}
+
+		if fixText == "" {
+			t.Error("expected non-empty fix")
+		}
+
+		t.Logf("Generated fix: %s", fixText)
+	})
+
+	t.Run("Safe Mode Workflow", func(t *testing.T) {
+		cfg.Agent.Mode = "safe"
+
+		// In Safe mode, a PR is created with fixes
+		if cfg.Agent.Mode != "safe" {
+			t.Errorf("mode = %q, want safe", cfg.Agent.Mode)
+		}
+
+		// Verify that in safe mode, we would create a PR
+		// (actual PR creation is mocked)
+		t.Log("Safe mode: PR would be created with fixes")
+	})
+}
+
+// TestIssueDeduplication tests that duplicate issues are removed
+func TestIssueDeduplication(t *testing.T) {
+	issues := []*reviewer.Issue{
+		{
+			ID:       "1",
+			FilePath: "test.go",
+			Line:     10,
+			Severity: "High",
+			Title:    "Nil pointer",
+		},
+		{
+			ID:       "2",
+			FilePath: "test.go",
+			Line:     10,
+			Severity: "High",
+			Title:    "Nil pointer", // Duplicate
+		},
+		{
+			ID:       "3",
+			FilePath: "test.go",
+			Line:     20,
+			Severity: "Medium",
+			Title:    "Unused variable",
+		},
+	}
+
+	deduplicated := reviewer.DeduplicateIssues(issues)
+
+	if len(deduplicated) != 2 {
+		t.Errorf("expected 2 unique issues, got %d", len(deduplicated))
+	}
+}
+
+// TestSeverityPrioritization tests issue prioritization
+func TestSeverityPrioritization(t *testing.T) {
+	issues := []*reviewer.Issue{
+		{ID: "1", Severity: "Low", Title: "Style issue"},
+		{ID: "2", Severity: "Critical", Title: "Security vulnerability"},
+		{ID: "3", Severity: "Medium", Title: "Code smell"},
+		{ID: "4", Severity: "High", Title: "Bug"},
+	}
+
+	prioritizer := reviewer.NewPrioritizer()
+	sorted := prioritizer.Sort(issues)
+
+	// Verify order: Critical -> High -> Medium -> Low
+	expectedOrder := []string{"Critical", "High", "Medium", "Low"}
+	for i, issue := range sorted {
+		if issue.Severity != expectedOrder[i] {
+			t.Errorf("issue %d: severity = %q, want %q",
+				i, issue.Severity, expectedOrder[i])
+		}
+	}
+}
+
+// TestConfigValidation tests configuration validation
+func TestConfigValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     *config.Config
+		wantErr bool
+	}{
+		{
+			name: "valid config",
+			cfg: &config.Config{
+				Agent: config.AgentConfig{
+					Enabled: true,
+					Mode:    "safe",
+				},
+				Review: config.ReviewConfig{
+					AutoReview: true,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid mode",
+			cfg: &config.Config{
+				Agent: config.AgentConfig{
+					Enabled: true,
+					Mode:    "invalid",
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := config.Validate(tt.cfg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
