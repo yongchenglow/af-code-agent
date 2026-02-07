@@ -9,7 +9,7 @@ on:
         type: string
 
 env:
-  GO_VERSION: "1.23"
+  GO_VERSION: "1.24.13"
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   PRODUCTION_PORT: 30007
