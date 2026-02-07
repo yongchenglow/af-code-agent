@@ -22,8 +22,8 @@ github-code-agent
 coverage.out
 coverage.html
 
-# CI/CD
-.github/
+# CI/CD (but keep code-agent.yml config)
+.github/workflows/
 
 # Env files
 .env

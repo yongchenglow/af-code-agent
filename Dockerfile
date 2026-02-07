@@ -29,7 +29,7 @@ WORKDIR /app
 COPY --from=builder /app/github-code-agent .
 
 # Copy config file template if it exists
-COPY --from=builder /app/.github/code-agent.yml .github/code-agent.yml 2>/dev/null || true
+COPY --from=builder /app/.github/code-agent.yml .github/code-agent.yml
 
 # Create non-root user
 RUN addgroup -g 1000 appuser && \
