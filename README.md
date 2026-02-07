@@ -813,6 +813,7 @@ make lint
 The project includes a production-ready multi-stage Dockerfile:
 
 **Features:**
+
 - Multi-stage build for minimal image size
 - Go 1.24.13-alpine base image
 - Non-root user (appuser:1000)
@@ -820,6 +821,7 @@ The project includes a production-ready multi-stage Dockerfile:
 - CA certificates for HTTPS
 
 **Build and run:**
+
 ```bash
 docker build -t github-code-agent .
 docker run -d -p 8080:8080 --env-file .env --name code-agent github-code-agent
@@ -830,6 +832,7 @@ docker run -d -p 8080:8080 --env-file .env --name code-agent github-code-agent
 Production-ready Helm chart with:
 
 **Control Plane:**
+
 - 1 replica deployment
 - 500m CPU / 512Mi memory requests
 - Health and readiness probes
@@ -837,11 +840,13 @@ Production-ready Helm chart with:
 - External secrets management
 
 **Worker Agents:**
+
 - 2-10 replicas with HPA
 - Auto-scaling based on CPU (70% threshold)
 - Separate deployment for agent workloads
 
 **Deploy to Kubernetes:**
+
 ```bash
 # Create namespace
 kubectl create namespace github-code-agent

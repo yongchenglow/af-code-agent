@@ -73,6 +73,7 @@ kubectl create secret generic agentfield-secrets \
 ```
 
 **Required fields:**
+
 - `AGENTFIELD_URL`: URL of the AgentField control plane (must be accessible from agents)
 - `GITHUB_TOKEN`: GitHub personal access token with repo access
 - `GITHUB_WEBHOOK_SECRET`: Secret for validating GitHub webhooks
@@ -114,22 +115,22 @@ kubectl get secret agentfield-secrets -n agentfield -o yaml
 
 ### Key Values
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `agent.enabled` | Enable agent deployment | `true` |
-| `agent.replicaCount` | Number of agent replicas | `1` |
-| `agent.image.repository` | Agent image repository | `ghcr.io/yongchenglow/af-code-agent` |
-| `agent.image.tag` | Agent image tag | Chart.AppVersion |
-| `agent.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `agent.resources.requests.cpu` | CPU request | `250m` |
-| `agent.resources.requests.memory` | Memory request | `512Mi` |
-| `agent.resources.limits.cpu` | CPU limit | `1` |
-| `agent.resources.limits.memory` | Memory limit | `2Gi` |
-| `agent.autoscaling.enabled` | Enable HPA | `false` |
-| `agent.autoscaling.minReplicas` | Minimum replicas | `1` |
-| `agent.autoscaling.maxReplicas` | Maximum replicas | `10` |
-| `agent.externalSecret.enabled` | Use external secret | `true` |
-| `agent.externalSecret.name` | External secret name | `agentfield-secrets` |
+| Parameter                         | Description              | Default                              |
+| --------------------------------- | ------------------------ | ------------------------------------ |
+| `agent.enabled`                   | Enable agent deployment  | `true`                               |
+| `agent.replicaCount`              | Number of agent replicas | `1`                                  |
+| `agent.image.repository`          | Agent image repository   | `ghcr.io/yongchenglow/af-code-agent` |
+| `agent.image.tag`                 | Agent image tag          | Chart.AppVersion                     |
+| `agent.image.pullPolicy`          | Image pull policy        | `IfNotPresent`                       |
+| `agent.resources.requests.cpu`    | CPU request              | `250m`                               |
+| `agent.resources.requests.memory` | Memory request           | `512Mi`                              |
+| `agent.resources.limits.cpu`      | CPU limit                | `1`                                  |
+| `agent.resources.limits.memory`   | Memory limit             | `2Gi`                                |
+| `agent.autoscaling.enabled`       | Enable HPA               | `false`                              |
+| `agent.autoscaling.minReplicas`   | Minimum replicas         | `1`                                  |
+| `agent.autoscaling.maxReplicas`   | Maximum replicas         | `10`                                 |
+| `agent.externalSecret.enabled`    | Use external secret      | `true`                               |
+| `agent.externalSecret.name`       | External secret name     | `agentfield-secrets`                 |
 
 ### Example: Custom Values
 
@@ -208,6 +209,7 @@ kubectl logs -l app.kubernetes.io/component=agent -n agentfield --tail=100
 ```
 
 Common issues:
+
 - Missing or invalid `AGENTFIELD_URL`
 - Control plane not running
 - Missing AI API keys

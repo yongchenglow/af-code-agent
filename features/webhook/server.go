@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -85,7 +86,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"webhook_secret": s.webhookSecret,
 	}
 
+	// Add agent to context so it can be retrieved by reasoners
 	ctx := r.Context()
+	ctx = withAgent(ctx, s.agent)
 	result, err := s.agent.CallLocal(ctx, "handle_webhook", input)
 	if err != nil {
 		log.Printf("Webhook processing failed: %v", err)
@@ -106,4 +109,9 @@ func RegisterWebhookHandler(mux *http.ServeMux, app *agent.Agent, webhookSecret 
 	server := NewServer(app, webhookSecret)
 	mux.Handle("/webhook", server)
 	log.Println("Webhook handler registered at /webhook")
+}
+
+// withAgent adds the agent instance to the context
+func withAgent(ctx context.Context, agent *agent.Agent) context.Context {
+	return context.WithValue(ctx, "agent", agent)
 }

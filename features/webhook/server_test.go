@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
+	"github.com/yourorg/github-code-agent/features/analyzer"
 )
 
 func TestWebhookSignatureValidation(t *testing.T) {
@@ -26,6 +27,7 @@ func TestWebhookSignatureValidation(t *testing.T) {
 
 	// Register reasoners
 	RegisterReasoners(app)
+	analyzer.RegisterReasoners(app)
 
 	// Create webhook server
 	webhookSecret := "test-secret-123"
