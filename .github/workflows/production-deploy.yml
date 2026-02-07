@@ -13,6 +13,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   PRODUCTION_PORT: 30007
+  AGENT_PORT: 30008
 
 jobs:
   deploy:
@@ -155,7 +156,129 @@ jobs:
             exit 1
           fi
 
-      - name: Create Cloudflare DNS record
+      - name: Create Cloudflare Tunnel route for GitHub Agent
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+        run: |
+          PORT="${{ env.AGENT_PORT }}"
+          FULL_HOSTNAME="code-agent.yongchenglow.com"
+          echo "Adding Cloudflare tunnel route for: $FULL_HOSTNAME -> http://localhost:${PORT}"
+
+          CURRENT_CONFIG=$(curl -s -X GET \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/cfd_tunnel/$CLOUDFLARE_TUNNEL_ID/configurations" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json")
+
+          if ! echo "$CURRENT_CONFIG" | jq -e '.success == true' >/dev/null 2>&1; then
+            echo "✗ Failed to get current tunnel configuration"
+            echo "$CURRENT_CONFIG" | jq '.'
+            exit 1
+          fi
+
+          CURRENT_INGRESS=$(echo "$CURRENT_CONFIG" | jq '.result.config.ingress // []')
+          CURRENT_INGRESS=$(echo "$CURRENT_INGRESS" | jq --arg hostname "$FULL_HOSTNAME" '
+            map(select(.hostname != $hostname))
+          ')
+
+          NEW_INGRESS=$(echo "$CURRENT_INGRESS" | jq --arg hostname "$FULL_HOSTNAME" --arg service "http://localhost:${PORT}" '
+            map(select(.service != "http_status:404")) +
+            [{
+              "hostname": $hostname,
+              "service": $service
+            }] +
+            [{"service": "http_status:404"}]
+          ')
+
+          UPDATE_RESPONSE=$(curl -s -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/cfd_tunnel/$CLOUDFLARE_TUNNEL_ID/configurations" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "{\"config\": {\"ingress\": $NEW_INGRESS}}")
+
+          if echo "$UPDATE_RESPONSE" | jq -e '.success == true' >/dev/null 2>&1; then
+            echo "✓ Successfully added tunnel route for $FULL_HOSTNAME"
+          else
+            echo "✗ Failed to update tunnel configuration"
+            echo "$UPDATE_RESPONSE" | jq '.'
+            exit 1
+          fi
+
+      - name: Create Cloudflare DNS record for GitHub Agent
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+        run: |
+          FULL_HOSTNAME="code-agent.yongchenglow.com"
+          DOMAIN="yongchenglow.com"
+
+          echo "Creating DNS CNAME record for: $FULL_HOSTNAME"
+
+          ZONE_RESPONSE=$(curl -s -X GET \
+            "https://api.cloudflare.com/client/v4/zones?name=${DOMAIN}" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json")
+
+          ZONE_ID=$(echo "$ZONE_RESPONSE" | jq -r '.result[0].id')
+
+          if [ -z "$ZONE_ID" ] || [ "$ZONE_ID" = "null" ]; then
+            echo "✗ Failed to get Zone ID for domain: $DOMAIN"
+            exit 1
+          fi
+
+          echo "✓ Found Zone ID: $ZONE_ID"
+
+          EXISTING_RECORD=$(curl -s -X GET \
+            "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?type=CNAME&name=${FULL_HOSTNAME}" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json")
+
+          RECORD_ID=$(echo "$EXISTING_RECORD" | jq -r '.result[0].id // empty')
+
+          if [ -n "$RECORD_ID" ]; then
+            echo "✓ DNS record already exists, updating it"
+            UPDATE_RESPONSE=$(curl -s -X PUT \
+              "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{
+                \"type\": \"CNAME\",
+                \"name\": \"${FULL_HOSTNAME}\",
+                \"content\": \"${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com\",
+                \"ttl\": 1,
+                \"proxied\": true
+              }")
+
+            if echo "$UPDATE_RESPONSE" | jq -e '.success == true' >/dev/null 2>&1; then
+              echo "✓ Successfully updated DNS record for $FULL_HOSTNAME"
+            else
+              echo "✗ Failed to update DNS record"
+              exit 1
+            fi
+          else
+            echo "Creating new DNS record"
+            CREATE_RESPONSE=$(curl -s -X POST \
+              "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{
+                \"type\": \"CNAME\",
+                \"name\": \"${FULL_HOSTNAME}\",
+                \"content\": \"${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com\",
+                \"ttl\": 1,
+                \"proxied\": true
+              }")
+
+            if echo "$CREATE_RESPONSE" | jq -e '.success == true' >/dev/null 2>&1; then
+              echo "✓ Successfully created DNS record for $FULL_HOSTNAME"
+            else
+              echo "✗ Failed to create DNS record"
+              exit 1
+            fi
+          fi
+
+      - name: Create Cloudflare DNS record for Control Plane
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
