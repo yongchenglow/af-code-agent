@@ -80,14 +80,19 @@ func main() {
 	fixer.RegisterReasoners(app)            // Phase 3 ✓
 	gitops.RegisterReasoners(app, ghClient) // Phase 3 ✓
 
-	// Create custom HTTP server with webhook handler
-	mux := http.NewServeMux()
+	// Create a wrapper handler that routes between webhook and AgentField
+	webhookHandler := webhook.NewServer(app, envCfg.GitHubWebhookSecret)
+	agentFieldHandler := app.Handler()
 
-	// Register the custom webhook handler (validates GitHub signatures)
-	webhook.RegisterWebhookHandler(mux, app, envCfg.GitHubWebhookSecret)
-
-	// Register the AgentField handler for all other routes
-	mux.Handle("/", app.Handler())
+	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Route /webhook requests to the webhook handler
+		if r.URL.Path == "/webhook" {
+			webhookHandler.ServeHTTP(w, r)
+			return
+		}
+		// All other requests go to AgentField handler
+		agentFieldHandler.ServeHTTP(w, r)
+	})
 
 	// Start HTTP server
 	port := envCfg.Port
@@ -103,7 +108,7 @@ func main() {
 	// Start server
 	server := &http.Server{
 		Addr:    ":" + port,
-		Handler: mux,
+		Handler: mainHandler,
 	}
 
 	log.Printf("Webhook endpoint: http://localhost:%s/webhook", port)
