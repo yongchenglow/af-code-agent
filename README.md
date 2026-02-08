@@ -5,7 +5,8 @@ An autonomous GitHub code review agent built with Go and [AgentField](https://ww
 [![Status](https://img.shields.io/badge/status-production%20ready-success)](https://github.com)
 [![Go](https://img.shields.io/badge/go-1.24-blue)](https://go.dev/)
 [![Tests](https://img.shields.io/badge/tests-174%20passing-success)](https://github.com)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-blue)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/yongchenglow)
 
 ## Table of Contents
 
@@ -875,7 +876,78 @@ Contributions are welcome! Please read our contributing guidelines.
 
 ## License
 
-[Your License Here]
+This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)**.
+
+You are free to:
+
+- Share and redistribute the material
+- Adapt, remix, and build upon the material
+
+Under the following terms:
+
+- **Attribution**: You must give appropriate credit and indicate if changes were made
+- **NonCommercial**: You may not use the material for commercial purposes
+
+### Commercial Licensing
+
+**Self-Deployment: FREE**
+
+Self-deploy and use freely for any purpose, including commercial:
+
+- ✅ Internal company tools
+- ✅ Your own code reviews
+- ✅ On your infrastructure
+- ✅ No revenue sharing required
+
+**Hosted/SaaS: 10% Revenue Sharing**
+
+If you offer this as a service to customers:
+
+- **10% of gross revenue** from the hosted service
+- Simple flat rate - transparent and predictable
+- Includes ongoing support and updates
+- Quarterly reporting and payments
+
+**Examples:**
+
+_FREE (Self-Deployed):_
+
+- Your company uses it to review internal code
+- Consultant uses it for client projects
+- Startup uses it for their own development
+
+_Requires License (Hosted/SaaS):_
+rojects
+
+- Startup uses it for their own development
+
+_Requires License (Hosted/SaaS):_
+
+- You charge customers for code review services
+- SaaS product offering AI code reviews
+- Paid platform providing this functionality
+
+[Contact for hosted/SaaS licensing](https://github.com/yongchenglow/af-code-agent/issues)
+
+See the [LICENSE](LICENSE) file for full details.
+
+### Attribution
+
+When using or modifying this work, please provide attribution as follows:
+
+```
+Based on af-code-agent by Yong Cheng Low
+(https://github.com/yongchenglow/af-code-agent), licensed under CC BY-NC 4.0
+```
+
+## Sponsorship
+
+If you find this project useful, please consider sponsoring its development:
+
+- [GitHub Sponsors](https://github.com/sponsors/yongchenglow)
+- [DBS PayLah!](https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef=zp6RIxPiw5)
+
+Your support helps maintain and improve this project for the community.
 
 ## Support
 

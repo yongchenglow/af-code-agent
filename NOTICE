@@ -1,0 +1,94 @@
+af-code-agent
+Copyright (c) 2025 Yong Cheng Low
+
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0
+International License (CC BY-NC 4.0).
+
+===============================================================================
+
+ATTRIBUTION REQUIREMENTS
+
+If you use, modify, or distribute this software, you must:
+
+1. Provide clear attribution to the original project
+2. Include a link to the original repository:
+   <https://github.com/yongchenglow/af-code-agent>
+3. Indicate if modifications were made
+4. Not use the material for commercial purposes
+
+Suggested attribution format:
+"Based on af-code-agent by Yong Cheng Low
+(<https://github.com/yongchenglow/af-code-agent>), licensed under CC BY-NC 4.0"
+
+===============================================================================
+
+COMMERCIAL USE
+
+SELF-DEPLOYMENT (FREE):
+
+Self-deployed use is FREE for all purposes, including commercial use:
+
+- Deploy on your own infrastructure
+- Use as internal tooling within your company
+- Code review for your own projects
+- No revenue sharing required
+- No license agreement needed
+
+HOSTED/SAAS USE (REVENUE SHARING REQUIRED):
+
+If you offer this software as a service to others, a Revenue Sharing License
+is required:
+
+Terms:
+
+- 10% of gross revenue from the hosted service/SaaS offering
+- Flat rate - simple, transparent, and fair
+- Quarterly revenue reporting required
+- Includes ongoing support and updates
+- Perpetual license - no expiration
+- Written agreement required
+
+Payment Terms:
+
+- Quarterly payments via bank transfer or agreed method
+- Quarterly revenue reports with usage metrics
+- Annual audit rights reserved
+- No minimum revenue threshold - pay only when you earn
+
+What Requires a Revenue Sharing License:
+
+- Offering code review as a paid service to customers
+- SaaS products providing access to this functionality
+- Selling hosted access to this software
+- Charging customers to use this code review capability
+
+What is FREE (No License Required):
+this functionality
+
+- Selling hosted access to this software
+- Charging customers to use this code review capability
+
+What is FREE (No License Required):
+
+- Self-deployed internal company tools
+- Personal projects
+- Educational and research purposes
+- Non-profit organizations
+- Evaluation and testing
+
+To obtain a commercial license, contact the repository owner at:
+<https://github.com/yongchenglow/af-code-agent/issues>
+
+===============================================================================
+
+SPONSORSHIP
+
+If you find this project useful, please consider sponsoring its development:
+<https://github.com/sponsors/yongchenglow>
+
+===============================================================================
+
+THIRD-PARTY COMPONENTS
+
+This software may include third-party components with their own licenses.
+Please refer to the respective dependencies and their licenses for details.

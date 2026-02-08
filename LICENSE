@@ -1,0 +1,92 @@
+Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+
+Copyright (c) 2025 Yong Cheng Low
+
+This work is licensed under the Creative Commons Attribution-NonCommercial 4.0
+International License. To view a copy of this license, visit
+<http://creativecommons.org/licenses/by-nc/4.0/> or send a letter to Creative
+Commons, PO Box 1866, Mountain View, CA 94042, USA.
+
+===============================================================================
+
+You are free to:
+
+- Share: copy and redistribute the material in any medium or format
+- Adapt: remix, transform, and build upon the material
+
+The licensor cannot revoke these freedoms as long as you follow the license
+terms.
+
+Under the following terms:
+
+- Attribution: You must give appropriate credit, provide a link to the license,
+  and indicate if changes were made. You may do so in any reasonable manner,
+  but not in any way that suggests the licensor endorses you or your use.
+
+- NonCommercial: You may not use the material for commercial purposes.
+
+- No additional restrictions: You may not apply legal terms or technological
+  measures that legally restrict others from doing anything the license permits.
+
+Notices:
+
+You do not have to comply with the license for elements of the material in the
+public domain or where your use is permitted by an applicable exception or
+limitation.
+
+No warranties are given. The license may not give you all of the permissions
+necessary for your intended use. For example, other rights such as publicity,
+privacy, or moral rights may limit how you use the material.
+
+===============================================================================
+
+COMMERCIAL USE
+
+**Self-Deployment (FREE for commercial use):**
+
+You may freely use this software for commercial purposes if you self-deploy it,
+including:
+
+- Internal tools within your company
+- Code review for your own projects
+- Running on your own infrastructure
+- No revenue sharing required for self-hosted use
+
+**Hosted/SaaS Use (10% Revenue Sharing Required):**
+
+If you offer this software as a service to others, a Revenue Sharing License
+is required:
+
+- 10% of gross revenue from the hosted service/SaaS product
+- Applies when you charge customers to use the code review functionality
+- Requires written agreement with repository owner
+- Includes ongoing support and updates
+- Quarterly reporting and payments
+
+**What requires a Revenue Sharing License:**
+
+- Offering code review as a paid service to customers
+- SaaS products that provide access to this functionality
+- Selling hosted access to this software
+- Any service where customers pay to use this code review capability
+
+**What is FREE (no license required):**
+
+- Self-deployed internal tools for your company
+- Personal projects
+- Educational and research purposes
+- Non-profit organizations
+- Evaluation and testing
+
+For commercial licensing inquiries, please contact:
+
+- GitHub: @yongchenglow
+- Create an issue at: <https://github.com/yongchenglow/af-code-agent/issues>
+
+===============================================================================
+
+Attribution Format:
+When using or modifying this work, please provide attribution as follows:
+
+"Based on [af-code-agent](https://github.com/yongchenglow/af-code-agent)
+by Yong Cheng Low, licensed under CC BY-NC 4.0"
