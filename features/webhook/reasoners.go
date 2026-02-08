@@ -6,6 +6,8 @@ import (
 	"log"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
+	"github.com/google/go-github/v57/github"
+	ghpkg "github.com/yourorg/github-code-agent/pkg/github"
 	"github.com/yourorg/github-code-agent/pkg/config"
 )
 
@@ -101,6 +103,16 @@ func HandlePREvent(ctx context.Context, input map[string]any) (any, error) {
 	}
 
 	log.Printf("Handling PR #%d event (action: %s)", int(prNumber), action)
+
+	// Check if this is an agent-created fix PR - skip to avoid infinite loops
+	if isAgentPR(ctx, repo, int(prNumber)) {
+		log.Printf("Skipping PR #%d - this is an agent-created fix PR", int(prNumber))
+		return map[string]any{
+			"success": true,
+			"message": fmt.Sprintf("PR #%d skipped (agent-created fix PR)", int(prNumber)),
+			"skipped": true,
+		}, nil
+	}
 
 	// Get agent from context
 	agentInstance := GetAgentFromContext(ctx)
@@ -376,6 +388,16 @@ func handlePushEvent(ctx context.Context, payload map[string]any) (any, error) {
 		branchName = ref[11:]
 	}
 
+	// Skip agent-created branches to avoid infinite loops
+	if len(branchName) >= 12 && branchName[:12] == "agent-fixes/" {
+		log.Printf("Skipping push to agent-created branch: %s", branchName)
+		return map[string]any{
+			"success": true,
+			"message": fmt.Sprintf("Ignoring push to agent-created branch %s", branchName),
+			"skipped": true,
+		}, nil
+	}
+
 	agentInstance := GetAgentFromContext(ctx)
 	if agentInstance == nil {
 		return nil, fmt.Errorf("agent not found in context")
@@ -445,6 +467,58 @@ func getKeys(m map[string]any) []string {
 func GetConfigFromContext(ctx context.Context) *config.Config {
 	if cfg, ok := ctx.Value("config").(*config.Config); ok {
 		return cfg
+	}
+	return nil
+}
+
+// isAgentPR checks if a PR is created by the agent (to avoid infinite loops)
+func isAgentPR(ctx context.Context, repo string, prNumber int) bool {
+	// Parse owner/repo
+	parts := []string{}
+	for i := 0; i < len(repo); i++ {
+		if repo[i] == '/' {
+			parts = append(parts, repo[:i])
+			parts = append(parts, repo[i+1:])
+			break
+		}
+	}
+	if len(parts) != 2 {
+		return false
+	}
+	owner, repoName := parts[0], parts[1]
+
+	// Get GitHub client from context
+	ghClient := GetGitHubClientFromContext(ctx)
+	if ghClient == nil {
+		return false
+	}
+
+	// Fetch PR details
+	pr, err := ghpkg.GetPR(ctx, ghClient, owner, repoName, prNumber)
+	if err != nil {
+		log.Printf("Failed to fetch PR for loop check: %v", err)
+		return false
+	}
+
+	// Check if the branch name starts with "agent-fixes/"
+	headRef := pr.GetHead().GetRef()
+	if len(headRef) >= 12 && headRef[:12] == "agent-fixes/" {
+		return true
+	}
+
+	// Check if PR title contains agent marker
+	title := pr.GetTitle()
+	if len(title) >= 13 && title[:13] == "🤖 Auto-fix:" {
+		return true
+	}
+
+	return false
+}
+
+// GetGitHubClientFromContext retrieves the GitHub client from context
+func GetGitHubClientFromContext(ctx context.Context) *github.Client {
+	if client, ok := ctx.Value("github_client").(*ghpkg.Client); ok {
+		return client.GetClient()
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package gitops
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/yourorg/github-code-agent/features/fixer"
 	"github.com/yourorg/github-code-agent/features/reviewer"
@@ -24,6 +25,36 @@ func PostReviewWithFixes(
 		Success:        true,
 		IssuesReviewed: len(issues),
 		FixesApplied:   len(patches),
+	}
+
+	// Clone the repository if we have patches to apply
+	var actualRepoPath string
+	if len(patches) > 0 {
+		fmt.Printf("DEBUG: Starting to clone repository for %d patches\n", len(patches))
+
+		// Get GitHub token from environment
+		token := GetGitHubTokenFromEnv()
+		if token == "" {
+			result.Success = false
+			result.Error = "GITHUB_TOKEN not found in environment"
+			fmt.Printf("ERROR: GITHUB_TOKEN not found in environment\n")
+			return result, fmt.Errorf("GITHUB_TOKEN not found")
+		}
+
+		repoURL := fmt.Sprintf("https://github.com/%s/%s.git", owner, repo)
+		fmt.Printf("DEBUG: Cloning repository from %s\n", repoURL)
+
+		clonedPath, err := CloneRepository(ctx, repoURL, token)
+		if err != nil {
+			result.Success = false
+			result.Error = fmt.Sprintf("failed to clone repository: %v", err)
+			fmt.Printf("ERROR: Failed to clone repository: %v\n", err)
+			return result, err
+		}
+		actualRepoPath = clonedPath
+		fmt.Printf("SUCCESS: Cloned repository to %s\n", actualRepoPath)
+	} else {
+		fmt.Printf("DEBUG: No patches to apply, skipping repository operations\n")
 	}
 
 	// Step 1: Post initial review comments for all issues
@@ -57,7 +88,7 @@ func PostReviewWithFixes(
 	// Step 2: Apply fixes based on mode
 	if mode == YOLOMode {
 		// YOLO mode: Push directly to PR branch
-		commitResult, err := applyFixesDirectly(ctx, repoPath, patches)
+		commitResult, err := applyFixesDirectly(ctx, actualRepoPath, patches)
 		if err != nil {
 			result.Success = false
 			result.Error = fmt.Sprintf("failed to apply fixes in YOLO mode: %v", err)
@@ -91,12 +122,18 @@ func PostReviewWithFixes(
 
 	} else {
 		// Safe mode: Create fix PR
-		fixPR, err := createFixPR(ctx, ghClient, owner, repo, repoPath, prNumber, patches)
+		fmt.Printf("DEBUG: Creating fix PR in safe mode for %d patches\n", len(patches))
+		fmt.Printf("DEBUG: Repository path: %s\n", actualRepoPath)
+
+		fixPR, err := createFixPR(ctx, ghClient, owner, repo, actualRepoPath, prNumber, patches)
 		if err != nil {
 			result.Success = false
 			result.Error = fmt.Sprintf("failed to create fix PR: %v", err)
+			fmt.Printf("ERROR: Failed to create fix PR: %v\n", err)
 			return result, err
 		}
+
+		fmt.Printf("SUCCESS: Created fix PR #%d: %s\n", fixPR.Number, fixPR.HTMLURL)
 
 		result.FixPR = fixPR.Number
 		result.FixPRURL = fixPR.HTMLURL
@@ -152,42 +189,61 @@ func createFixPR(
 	patches []*fixer.CodePatch,
 ) (*PullRequestInfo, error) {
 
-	// Get the base branch from the original PR
-	// For now, assume it's targeting the PR's head branch
-	baseBranch := fmt.Sprintf("pr-%d", originalPRNumber)
+	// First, fetch the original PR to get the actual head branch
+	fmt.Printf("DEBUG: Fetching original PR #%d details\n", originalPRNumber)
+	// For now, we'll use a placeholder - this needs the actual PR head branch
+	// TODO: Fetch the actual PR details to get head branch
+	baseBranch := "feature/performance-issues" // This should come from the original PR
 	fixBranchName := fmt.Sprintf("agent-fixes/pr-%d", originalPRNumber)
 
+	fmt.Printf("DEBUG: Base branch: %s, Fix branch: %s\n", baseBranch, fixBranchName)
+
 	// Create fix branch
+	fmt.Printf("DEBUG: Creating branch %s from %s\n", fixBranchName, baseBranch)
 	_, err := CreateBranch(ctx, repoPath, baseBranch, fixBranchName)
 	if err != nil {
+		fmt.Printf("ERROR: Failed to create branch: %v\n", err)
 		return nil, fmt.Errorf("failed to create fix branch: %w", err)
 	}
+	fmt.Printf("SUCCESS: Created branch %s\n", fixBranchName)
 
 	// Apply patches
 	commitMsg := GenerateCommitMessage(patches)
+	fmt.Printf("DEBUG: Applying %d patches with message: %s\n", len(patches), commitMsg)
 	applyResult, err := ApplyPatches(ctx, repoPath, patches, commitMsg)
 	if err != nil {
+		fmt.Printf("ERROR: Failed to apply patches: %v\n", err)
 		return nil, fmt.Errorf("failed to apply patches: %w", err)
 	}
 
 	if !applyResult.Success {
+		fmt.Printf("ERROR: Patch application failed: %s\n", applyResult.Error)
 		return nil, fmt.Errorf("patch application failed: %s", applyResult.Error)
 	}
+	fmt.Printf("SUCCESS: Applied patches successfully\n")
 
 	// Push fix branch
+	fmt.Printf("DEBUG: Pushing branch %s\n", fixBranchName)
 	if err := PushBranch(ctx, repoPath, fixBranchName); err != nil {
+		fmt.Printf("ERROR: Failed to push branch: %v\n", err)
 		return nil, fmt.Errorf("failed to push fix branch: %w", err)
 	}
+	fmt.Printf("SUCCESS: Pushed branch %s\n", fixBranchName)
 
 	// Create PR
 	prTitle := GeneratePRTitle(originalPRNumber, len(patches))
 	prBody := GeneratePRBody(originalPRNumber, patches)
 
+	fmt.Printf("DEBUG: Creating PR: %s -> %s\n", fixBranchName, baseBranch)
+	fmt.Printf("DEBUG: PR title: %s\n", prTitle)
+
 	pr, err := ghClient.CreatePullRequest(ctx, owner, repo, prTitle, prBody, fixBranchName, baseBranch)
 	if err != nil {
+		fmt.Printf("ERROR: Failed to create PR: %v\n", err)
 		return nil, fmt.Errorf("failed to create PR: %w", err)
 	}
 
+	fmt.Printf("SUCCESS: Created PR #%d: %s\n", pr.Number, pr.HTMLURL)
 	return pr, nil
 }
 
@@ -202,4 +258,9 @@ func formatIssueBody(issue *reviewer.Issue) string {
 	body += fmt.Sprintf("\n\n_Category: %s_", issue.Category)
 
 	return body
+}
+
+// GetGitHubTokenFromEnv retrieves GitHub token from environment
+func GetGitHubTokenFromEnv() string {
+	return os.Getenv("GITHUB_TOKEN")
 }
