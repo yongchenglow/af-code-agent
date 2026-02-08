@@ -125,7 +125,7 @@ graph TB
 
 | Component      | Technology                   |
 | -------------- | ---------------------------- |
-| Language       | Go 1.24.0                    |
+| Language       | Go 1.24.13                   |
 | Framework      | AgentField SDK               |
 | AI Model       | DeepSeek Chat                |
 | GitHub API     | google/go-github/v57         |

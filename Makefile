@@ -53,7 +53,17 @@ lint: ## Run linter (requires golangci-lint)
 	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found. Install from: https://golangci-lint.run/usage/install/"; exit 1; }
 	golangci-lint run
 
-check: fmt test lint ## Run formatting, tests, and linting
+vet: ## Run go vet
+	@echo "Running go vet..."
+	go vet ./...
+	@echo "✓ Vet complete"
+
+tidy: ## Tidy dependencies
+	@echo "Tidying dependencies..."
+	go mod tidy
+	@echo "✓ Tidy complete"
+
+check: fmt vet tidy test lint ## Run formatting, vet, tidy, tests, and linting
 
 setup-env: ## Create .env file from template
 	@if [ ! -f .env ]; then \
