@@ -50,19 +50,19 @@ git clone https://github.com/yourorg/github-code-agent.git
 cd github-code-agent
 ```
 
-2. **Install dependencies:**
+1. **Install dependencies:**
 
 ```bash
 go mod download
 ```
 
-3. **Build the agent:**
+1. **Build the agent:**
 
 ```bash
 go build -o github-code-agent ./cmd/agent
 ```
 
-4. **Create environment configuration:**
+1. **Create environment configuration:**
 
 ```bash
 cp .env.example .env
@@ -128,7 +128,7 @@ AGENTFIELD_URL=http://localhost:8080
 
 # Application
 LOG_LEVEL=info
-PORT=8080
+PORT=8001
 ```
 
 ## Configuration
@@ -139,7 +139,7 @@ Create `.github/code-agent.yml` in your repository:
 # Agent configuration
 agent:
   enabled: true
-  mode: safe  # "safe" or "yolo"
+  mode: safe # "safe" or "yolo"
 
 # Webhook triggers
 webhooks:
@@ -154,7 +154,7 @@ webhooks:
 review:
   auto_review: true
   auto_fix: true
-  severity_threshold: medium  # Only auto-fix medium and below
+  severity_threshold: medium # Only auto-fix medium and below
   ignore_paths:
     - "*.md"
     - "docs/**"
@@ -275,11 +275,13 @@ You'll see the agent:
 ### Step 4: Review the Results
 
 **Safe Mode:**
+
 - A new PR will be created (e.g., `🤖 Automated fixes for PR #123`)
 - Review the fixes and merge if acceptable
 - Original PR comments will link to the fix PR
 
 **YOLO Mode:**
+
 - Fixes are pushed directly to your PR branch
 - PR comments will link to the fix commit
 - CI/CD runs automatically to verify fixes
@@ -289,12 +291,14 @@ You'll see the agent:
 ### Safe Mode (Recommended)
 
 **What it does:**
+
 - Creates a new branch with fixes
 - Opens a PR targeting your original PR branch
 - Allows human review before merging
 - Safer for production repositories
 
 **When to use:**
+
 - Production repositories
 - Teams new to the agent
 - Complex changes requiring review
@@ -309,32 +313,32 @@ agent:
 
 **Workflow:**
 
-```
-PR opened
-  ↓
-Review code → Find issues
-  ↓
-Post review comments
-  ↓
-Generate fixes → Validate
-  ↓
-Create fix branch: agent-fixes/pr-123
-  ↓
-Create PR #124 → targets feature-branch
-  ↓
-Human reviews PR #124
-  ↓
-Merge → Fixes applied to original PR
+```mermaid
+graph TB
+    A[PR opened] --> B[Review code & Find issues]
+    B --> C[Post review comments]
+    C --> D[Generate fixes & Validate]
+    D --> E[Create fix branch:<br/>agent-fixes/pr-123]
+    E --> F[Create PR #124<br/>targets feature-branch]
+    F --> G[Human reviews PR #124]
+    G --> H[Merge → Fixes applied<br/>to original PR]
+
+    style A fill:#e1f5ff
+    style D fill:#fff3cd
+    style F fill:#d4edda
+    style H fill:#d1ecf1
 ```
 
 ### YOLO Mode
 
 **What it does:**
+
 - Pushes fixes directly to your PR branch
 - No intermediate PR created
 - Faster, but more aggressive
 
 **When to use:**
+
 - Personal repositories
 - Trusted, well-tested code
 - Simple, low-risk fixes
@@ -346,25 +350,24 @@ Merge → Fixes applied to original PR
 agent:
   mode: yolo
   auto_fix:
-    require_tests_passing: true  # Safety check
+    require_tests_passing: true # Safety check
 ```
 
 **Workflow:**
 
-```
-PR opened
-  ↓
-Review code → Find issues
-  ↓
-Post review comments
-  ↓
-Generate fixes → Validate
-  ↓
-Push directly to feature-branch
-  ↓
-CI/CD runs
-  ↓
-Update comments with commit link
+```mermaid
+graph TB
+    A[PR opened] --> B[Review code & Find issues]
+    B --> C[Post review comments]
+    C --> D[Generate fixes & Validate]
+    D --> E[Push directly to<br/>feature-branch]
+    E --> F[CI/CD runs]
+    F --> G[Update comments with<br/>commit link]
+
+    style A fill:#e1f5ff
+    style D fill:#fff3cd
+    style E fill:#f8d7da
+    style F fill:#d1ecf1
 ```
 
 ### Controlling Modes Per-PR
@@ -383,24 +386,28 @@ Override the default mode using PR labels:
 The agent supports the following languages with full analysis:
 
 #### Go
+
 - **Linters**: golangci-lint
 - **Formatters**: gofmt
 - **Metrics**: cyclomatic complexity, LOC
 - **Security**: hardcoded secrets, SQL injection, unsafe operations
 
 #### Python
+
 - **Linters**: pylint, black, mypy, flake8
 - **Formatters**: black, autopep8
 - **Metrics**: complexity, test coverage
 - **Security**: injection attacks, secrets, insecure dependencies
 
 #### JavaScript/TypeScript
+
 - **Linters**: eslint, tslint
 - **Formatters**: prettier
 - **Frameworks**: React, Vue, Angular detection
 - **Security**: XSS, prototype pollution, dependency vulnerabilities
 
 #### Other Languages (Basic Support)
+
 - Java
 - Ruby
 - PHP
@@ -447,6 +454,7 @@ languages:
    - Verify webhooks are being sent successfully
 
 2. **Check agent logs:**
+
    ```bash
    docker logs github-code-agent
    ```
@@ -466,15 +474,17 @@ languages:
 **Solutions:**
 
 1. **Check auto-fix setting:**
+
    ```yaml
    review:
-     auto_fix: true  # Ensure this is enabled
+     auto_fix: true # Ensure this is enabled
    ```
 
 2. **Check severity threshold:**
+
    ```yaml
    review:
-     severity_threshold: medium  # Only fixes medium and below
+     severity_threshold: medium # Only fixes medium and below
    ```
 
 3. **Check validation logs:**
@@ -484,7 +494,7 @@ languages:
 4. **Increase max attempts:**
    ```yaml
    validation:
-     max_fix_attempts: 5  # Default is 3
+     max_fix_attempts: 5 # Default is 3
    ```
 
 ### High API Costs
@@ -498,13 +508,15 @@ languages:
    - Check cache hit rate in logs
 
 2. **Reduce review frequency:**
+
    ```yaml
    webhooks:
-     wait_for_ci: true  # Wait for CI before reviewing
-     debounce_seconds: 60  # Wait longer for rapid commits
+     wait_for_ci: true # Wait for CI before reviewing
+     debounce_seconds: 60 # Wait longer for rapid commits
    ```
 
 3. **Limit file scope:**
+
    ```yaml
    review:
      ignore_paths:
@@ -556,7 +568,7 @@ Only auto-fix low-risk issues:
 
 ```yaml
 review:
-  severity_threshold: low  # Only auto-fix Low severity issues
+  severity_threshold: low # Only auto-fix Low severity issues
 ```
 
 Critical/High issues should be reviewed manually.
@@ -583,7 +595,7 @@ review:
   ignore_paths:
     - "vendor/**"
     - "node_modules/**"
-    - "*.pb.go"  # Protocol buffer generated files
+    - "*.pb.go" # Protocol buffer generated files
     - "docs/**"
 ```
 
@@ -608,10 +620,12 @@ Review agent performance regularly:
 ### How much does it cost to run?
 
 **AI Costs (DeepSeek via OpenRouter):**
+
 - ~$20-35/month for 50 PRs/day
 - 85-90% cheaper than GPT-4 or Claude
 
 **Infrastructure:**
+
 - $50-100/month for cloud VMs (2-4 Go agent pods)
 
 **Total: ~$80-135/month**
@@ -653,10 +667,29 @@ Yes, configure webhook triggers:
 webhooks:
   triggers:
     - pull_request.opened
-    - pull_request.ready_for_review  # Or wait until draft → ready
+    - pull_request.ready_for_review # Or wait until draft → ready
 ```
 
 ### What if the agent makes a mistake?
+
+1. **Reject the fix PR** (Safe mode) or **revert the commit** (YOLO mode)
+2. **Add feedback** as a PR comment (future enhancement: learning from feedback)
+3. **Adjust configuration** to prevent similar issues
+
+### Can it work with monorepos?
+
+Yes! Configure per-directory:
+
+````yaml
+# .github/code-agent.yml
+review:
+  ignore_paths:
+    - "service-a/**" # Exclude specific services
+
+# service-b/.code-agent.yml (override)
+standards:
+  coding:
+    max_line_length: 120es a mistake?
 
 1. **Reject the fix PR** (Safe mode) or **revert the commit** (YOLO mode)
 2. **Add feedback** as a PR comment (future enhancement: learning from feedback)
@@ -676,7 +709,7 @@ review:
 standards:
   coding:
     max_line_length: 120  # Different standard for this service
-```
+````
 
 ### How do I update the agent?
 
@@ -692,10 +725,10 @@ For major updates, review the CHANGELOG for breaking changes.
 
 ## Getting Help
 
-- **Issues**: https://github.com/yourorg/github-code-agent/issues
-- **Discussions**: https://github.com/yourorg/github-code-agent/discussions
-- **Documentation**: https://github.com/yourorg/github-code-agent/tree/main/docs
-- **Email**: support@yourorg.com
+- **Issues**: <https://github.com/yourorg/github-code-agent/issues>
+- **Discussions**: <https://github.com/yourorg/github-code-agent/discussions>
+- **Documentation**: <https://github.com/yourorg/github-code-agent/tree/main/docs>
+- **Email**: <support@yourorg.com>
 
 ## Contributing
 

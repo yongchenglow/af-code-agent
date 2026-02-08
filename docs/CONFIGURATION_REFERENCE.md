@@ -24,37 +24,37 @@ Environment variables are defined in `.env` file or set in your deployment envir
 
 ### GitHub Configuration
 
-| Variable | Required | Description | Example |
-|----------|----------|-------------|---------|
-| `GITHUB_APP_ID` | Yes | GitHub App ID | `123456` |
-| `GITHUB_PRIVATE_KEY_PATH` | Yes | Path to GitHub App private key (.pem file) | `./github-app.pem` |
-| `GITHUB_WEBHOOK_SECRET` | Yes | Webhook secret for signature validation | `your-secret-here` |
+| Variable                  | Required | Description                                | Example            |
+| ------------------------- | -------- | ------------------------------------------ | ------------------ |
+| `GITHUB_APP_ID`           | Yes      | GitHub App ID                              | `123456`           |
+| `GITHUB_PRIVATE_KEY_PATH` | Yes      | Path to GitHub App private key (.pem file) | `./github-app.pem` |
+| `GITHUB_WEBHOOK_SECRET`   | Yes      | Webhook secret for signature validation    | `your-secret-here` |
 
 ### AI Configuration
 
-| Variable | Required | Description | Default | Example |
-|----------|----------|-------------|---------|---------|
-| `OPENROUTER_API_KEY` | Yes* | OpenRouter API key for DeepSeek | - | `sk-or-v1-abc123` |
-| `OPENOPENAI_API_KEY` | Yes* | OpenAI API key (alternative to OpenRouter) | - | `sk-proj-abc123` |
-| `AI_MODEL` | Yes | AI model to use | `deepseek/deepseek-chat` | `gpt-4o` |
-| `AI_BASE_URL` | No | Custom AI API base URL | Auto-detected | `https://api.deepseek.com` |
-| `AI_TEMPERATURE` | No | AI temperature (0-1) | `0.2` | `0.1` |
-| `AI_MAX_TOKENS` | No | Maximum tokens per request | `4000` | `2000` |
+| Variable             | Required | Description                                | Default                  | Example                    |
+| -------------------- | -------- | ------------------------------------------ | ------------------------ | -------------------------- |
+| `OPENROUTER_API_KEY` | Yes\*    | OpenRouter API key for DeepSeek            | -                        | `sk-or-v1-abc123`          |
+| `OPENOPENAI_API_KEY` | Yes\*    | OpenAI API key (alternative to OpenRouter) | -                        | `sk-proj-abc123`           |
+| `AI_MODEL`           | Yes      | AI model to use                            | `deepseek/deepseek-chat` | `gpt-4o`                   |
+| `AI_BASE_URL`        | No       | Custom AI API base URL                     | Auto-detected            | `https://api.deepseek.com` |
+| `AI_TEMPERATURE`     | No       | AI temperature (0-1)                       | `0.2`                    | `0.1`                      |
+| `AI_MAX_TOKENS`      | No       | Maximum tokens per request                 | `4000`                   | `2000`                     |
 
-*Either `OPENROUTER_API_KEY` or `OPENOPENAI_API_KEY` is required
+\*Either `OPENROUTER_API_KEY` or `OPENOPENAI_API_KEY` is required
 
 ### AgentField Configuration
 
-| Variable | Required | Description | Default | Example |
-|----------|----------|-------------|---------|---------|
-| `AGENTFIELD_URL` | No | AgentField control plane URL | `http://localhost:8080` | `https://agentfield.yourdomain.com` |
+| Variable         | Required | Description                  | Default                 | Example                             |
+| ---------------- | -------- | ---------------------------- | ----------------------- | ----------------------------------- |
+| `AGENTFIELD_URL` | No       | AgentField control plane URL | `http://localhost:8080` | `https://agentfield.yourdomain.com` |
 
 ### Application Configuration
 
-| Variable | Required | Description | Default | Example |
-|----------|----------|-------------|---------|---------|
-| `LOG_LEVEL` | No | Logging level | `info` | `debug`, `warn`, `error` |
-| `PORT` | No | HTTP server port | `8080` | `3000` |
+| Variable    | Required | Description      | Default | Example                  |
+| ----------- | -------- | ---------------- | ------- | ------------------------ |
+| `LOG_LEVEL` | No       | Logging level    | `info`  | `debug`, `warn`, `error` |
+| `PORT`      | No       | HTTP server port | `8001`  | `3000`, `8080`           |
 
 ---
 
@@ -115,7 +115,7 @@ agent:
 - **Example**:
   ```yaml
   agent:
-    enabled: false  # Temporarily disable agent
+    enabled: false # Temporarily disable agent
   ```
 
 #### `mode`
@@ -130,7 +130,7 @@ agent:
 - **Example**:
   ```yaml
   agent:
-    mode: yolo  # Push fixes directly
+    mode: yolo # Push fixes directly
   ```
 
 ---
@@ -167,7 +167,7 @@ webhooks:
   webhooks:
     triggers:
       - pull_request.opened
-      - check_suite.completed  # Wait for CI/CD
+      - check_suite.completed # Wait for CI/CD
   ```
 
 #### `wait_for_ci`
@@ -179,7 +179,7 @@ webhooks:
 - **Example**:
   ```yaml
   webhooks:
-    wait_for_ci: true  # Review only after tests pass/fail
+    wait_for_ci: true # Review only after tests pass/fail
   ```
 
 #### `debounce_seconds`
@@ -193,7 +193,7 @@ webhooks:
 - **Example**:
   ```yaml
   webhooks:
-    debounce_seconds: 30  # Wait 30s for more commits
+    debounce_seconds: 30 # Wait 30s for more commits
   ```
 
 ---
@@ -225,7 +225,7 @@ review:
 - **Example**:
   ```yaml
   review:
-    auto_review: false  # Require manual trigger
+    auto_review: false # Require manual trigger
   ```
 
 #### `auto_fix`
@@ -237,7 +237,7 @@ review:
 - **Example**:
   ```yaml
   review:
-    auto_fix: false  # Review only, no fixes
+    auto_fix: false # Review only, no fixes
   ```
 
 #### `severity_threshold`
@@ -250,7 +250,7 @@ review:
 - **Example**:
   ```yaml
   review:
-    severity_threshold: low  # Only auto-fix Low issues
+    severity_threshold: low # Only auto-fix Low issues
   ```
 
 #### `ignore_paths`
@@ -280,7 +280,7 @@ review:
 - **Example**:
   ```yaml
   review:
-    max_files: 100  # Review larger PRs
+    max_files: 100 # Review larger PRs
   ```
 
 #### `max_loc`
@@ -292,7 +292,7 @@ review:
 - **Example**:
   ```yaml
   review:
-    max_loc: 1000  # Review larger changes
+    max_loc: 1000 # Review larger changes
   ```
 
 ---
@@ -323,7 +323,7 @@ validation:
 - **Example**:
   ```yaml
   validation:
-    enabled: false  # Skip validation (not recommended)
+    enabled: false # Skip validation (not recommended)
   ```
 
 #### `max_fix_attempts`
@@ -337,7 +337,7 @@ validation:
 - **Example**:
   ```yaml
   validation:
-    max_fix_attempts: 5  # Try harder to fix issues
+    max_fix_attempts: 5 # Try harder to fix issues
   ```
 
 #### `checks`
@@ -353,7 +353,7 @@ validation:
     checks:
       - syntax
       - linting
-      - security  # Skip formatting check
+      - security # Skip formatting check
   ```
 
 #### `timeout_seconds`
@@ -367,7 +367,7 @@ validation:
 - **Example**:
   ```yaml
   validation:
-    timeout_seconds: 60  # Allow more time for slow linters
+    timeout_seconds: 60 # Allow more time for slow linters
   ```
 
 #### `auto_format`
@@ -379,7 +379,7 @@ validation:
 - **Example**:
   ```yaml
   validation:
-    auto_format: false  # Don't auto-format
+    auto_format: false # Don't auto-format
   ```
 
 ---
@@ -543,6 +543,7 @@ languages:
 - **Type**: `array` of strings
 - **Description**: Linters to run for this language
 - **Examples**:
+
   ```yaml
   languages:
     python:
@@ -581,6 +582,7 @@ languages:
 - **Type**: `array` of strings
 - **Description**: Frameworks used (helps with context-aware analysis)
 - **Examples**:
+
   ```yaml
   languages:
     javascript:
@@ -789,13 +791,13 @@ agent:
 review:
   auto_review: true
   auto_fix: true
-  severity_threshold: high  # Auto-fix up to High severity
+  severity_threshold: high # Auto-fix up to High severity
 
 validation:
-  max_fix_attempts: 5  # Try harder
+  max_fix_attempts: 5 # Try harder
 
 notifications:
-  mention_author: true  # Notify author immediately
+  mention_author: true # Notify author immediately
 ```
 
 ### Review-Only Mode
@@ -807,7 +809,7 @@ agent:
 
 review:
   auto_review: true
-  auto_fix: false  # Review only, no fixes
+  auto_fix: false # Review only, no fixes
 
 notifications:
   on_review_complete: true
@@ -838,6 +840,27 @@ Configuration is loaded in this order (later overrides earlier):
 4. PR labels (for per-PR overrides)
 
 Example:
+t validates configuration on startup. Common validation errors:
+
+- Invalid `mode` value → must be `safe` or `yolo`
+- Invalid `severity_threshold` → must be `critical`, `high`, `medium`, or `low`
+- `max_fix_attempts` < 1 → must be at least 1
+- Invalid webhook trigger → must be recognized GitHub event
+- Invalid linter name → check language-specific linter availability
+
+---
+
+## Configuration Precedence
+
+Configuration is loaded in this order (later overrides earlier):
+
+1. Default values
+2. `.github/code-agent.yml` (repository)
+3. Environment variables (for secrets)
+4. PR labels (for per-PR overrides)
+
+Example:
+
 ```yaml
 # Default: mode = safe
 # .github/code-agent.yml: mode = yolo

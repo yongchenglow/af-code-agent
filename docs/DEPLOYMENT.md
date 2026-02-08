@@ -25,21 +25,31 @@ The deployment infrastructure consists of:
 
 The system uses a distributed architecture powered by AgentField:
 
-```
-┌────────────────────────────────────┐
-│    Control Plane (1-2 replicas)    │
-│  - Webhook handling                 │
-│  - Task orchestration               │
-│  - HTTP API (port 8080)             │
-└────────────────────────────────────┘
-              ↓ AgentField
-┌────────────────────────────────────┐
-│   Agent Workers (3-10 replicas)    │
-│  - Code review execution            │
-│  - AI-powered analysis              │
-│  - Fix generation                   │
-│  - Auto-scales on CPU/memory        │
-└────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph "Control Plane (1-2 replicas)"
+        CP[Control Plane<br/>Port 8001]
+        CP1[Webhook Handling]
+        CP2[Task Orchestration]
+        CP3[HTTP API]
+    end
+
+    subgraph "Agent Workers (3-10 replicas)"
+        AW1[Code Review Execution]
+        AW2[AI-Powered Analysis]
+        AW3[Fix Generation]
+        AW4[Auto-scales on CPU/Memory]
+    end
+
+    CP -->|AgentField SDK| AW1
+    CP -->|AgentField SDK| AW2
+    CP -->|AgentField SDK| AW3
+
+    style CP fill:#e1f5ff
+    style AW1 fill:#fff4e1
+    style AW2 fill:#fff4e1
+    style AW3 fill:#fff4e1
+    style AW4 fill:#fff4e1
 ```
 
 ## Prerequisites
@@ -180,9 +190,9 @@ Configure application settings via the `env` section in values files:
 controlPlane:
   env:
     - name: AGENTFIELD_URL
-      value: "http://agentfield-control-plane:8080"
+      value: "http://agentfield-control-plane:8001"
     - name: PORT
-      value: "8080"
+      value: "8001"
     - name: ENVIRONMENT
       value: "production"
 ```
@@ -220,6 +230,7 @@ rm helm/agentfield/secret.yaml
 #### Required Secret Keys
 
 The secret must contain these environment variables from `.env.example`:
+
 - `AGENTFIELD_URL`
 - `GITHUB_TOKEN`
 - `GITHUB_WEBHOOK_SECRET`
@@ -292,47 +303,50 @@ kubectl get hpa -n agentfield
 
 ## Deployment Architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  GitHub Actions                      │
-│  ┌──────────┐  ┌──────────┐  ┌────────────────┐   │
-│  │  Build   │→ │  Docker  │→ │   Deploy       │   │
-│  │  & Test  │  │  Build   │  │  (Production)  │   │
-│  └──────────┘  └──────────┘  └────────────────┘   │
-└─────────────────────────────────────────────────────┘
-                        ↓
-┌─────────────────────────────────────────────────────┐
-│           GitHub Container Registry (GHCR)          │
-│              ghcr.io/yourorg/af-code-agent          │
-└─────────────────────────────────────────────────────┘
-                        ↓
-┌─────────────────────────────────────────────────────┐
-│              Kubernetes Cluster                      │
-│  Namespace: agentfield                              │
-│  ┌───────────────────────────────────────────┐     │
-│  │  Control Plane Deployment                 │     │
-│  │  - Name: agentfield-control-plane         │     │
-│  │  - Replicas: 1-2 (autoscaling)            │     │
-│  │  - Port: 8080                             │     │
-│  │  - Resources: 500m CPU / 512Mi RAM        │     │
-│  └───────────────────────────────────────────┘     │
-│  ┌───────────────────────────────────────────┐     │
-│  │  Agent Workers Deployment                 │     │
-│  │  - Name: agentfield-agent                 │     │
-│  │  - Replicas: 3-10 (autoscaling)           │     │
-│  │  - Resources: 1 CPU / 1Gi RAM             │     │
-│  │  - Connects to Control Plane via AgentField     │
-│  └───────────────────────────────────────────┘     │
-│  ┌───────────────────────────────────────────┐     │
-│  │  Service: NodePort 30007                  │     │
-│  │  - Exposes Control Plane only             │     │
-│  └───────────────────────────────────────────┘     │
-└─────────────────────────────────────────────────────┘
-                        ↓
-┌─────────────────────────────────────────────────────┐
-│              Cloudflare Tunnel                       │
-│  agentfield.yongchenglow.com → localhost:30007      │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph "GitHub Actions CI/CD"
+        BUILD[Build & Test]
+        DOCKER[Docker Build]
+        DEPLOY[Deploy Production]
+        BUILD --> DOCKER --> DEPLOY
+    end
+
+    subgraph "GitHub Container Registry"
+        GHCR[ghcr.io/yongchenglow/af-code-agent]
+    end
+
+    subgraph "Kubernetes Cluster"
+        subgraph "Namespace: agentfield"
+            CP[Control Plane Deployment<br/>agentfield-control-plane<br/>Replicas: 1-2<br/>Port: 8001<br/>Resources: 500m CPU / 512Mi RAM]
+
+            AW[Agent Workers Deployment<br/>agentfield-agent<br/>Replicas: 3-10 autoscaling<br/>Resources: 1 CPU / 1Gi RAM]
+
+            SVC[Service: NodePort 30007<br/>Exposes Control Plane]
+
+            CP -.->|AgentField SDK| AW
+            CP --> SVC
+        end
+    end
+
+    subgraph "Cloudflare"
+        TUNNEL[Cloudflare Tunnel<br/>agentfield.yongchenglow.com]
+    end
+
+    DEPLOY -->|Push Image| GHCR
+    GHCR -->|Pull Image| CP
+    GHCR -->|Pull Image| AW
+    SVC -->|localhost:30007| TUNNEL
+    TUNNEL -->|HTTPS| INTERNET[Public Internet]
+
+    style BUILD fill:#e1f5ff
+    style DOCKER fill:#e1f5ff
+    style DEPLOY fill:#e1f5ff
+    style GHCR fill:#f0f0f0
+    style CP fill:#d4edda
+    style AW fill:#fff3cd
+    style SVC fill:#d1ecf1
+    style TUNNEL fill:#f8d7da
 ```
 
 ## Troubleshooting
@@ -388,14 +402,14 @@ kubectl top pods -n agentfield
 
 3. Verify DNS records in Cloudflare dashboard
 
-### Health Check Failures
+### Webhook Endpoint Testing
 
-The deployment includes health checks on `/health` endpoint:
+Test the webhook endpoint to verify deployment:
 
 ```bash
 # Test locally (if port-forwarded)
-kubectl port-forward svc/agentfield-control-plane 8080:8080 -n agentfield
-curl http://localhost:8080/health
+kubectl port-forward svc/agentfield-control-plane 8001:8001 -n agentfield
+curl -X POST http://localhost:8001/webhook
 ```
 
 ### Rollback Deployment

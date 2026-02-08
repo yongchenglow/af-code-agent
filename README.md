@@ -4,7 +4,7 @@ An autonomous GitHub code review agent built with Go and [AgentField](https://ww
 
 [![Status](https://img.shields.io/badge/status-production%20ready-success)](https://github.com)
 [![Go](https://img.shields.io/badge/go-1.24-blue)](https://go.dev/)
-[![Tests](https://img.shields.io/badge/tests-174%20passing-success)](https://github.com)
+[![Tests](https://img.shields.io/badge/tests-58%20functions-success)](https://github.com)
 [![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-blue)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/yongchenglow)
 
@@ -306,7 +306,7 @@ OPENAI_BASE_URL=https://openrouter.ai/api/v1
 AI_MODEL=deepseek/deepseek-chat
 
 # Application Settings
-PORT=8080
+PORT=8001
 LOG_LEVEL=info
 ```
 
@@ -609,11 +609,8 @@ go test ./features/reviewer/...
 # Verbose output
 go test -v ./features/...
 
-# Integration tests
-go test ./tests/integration/...
-
-# E2E tests
-go test ./tests/e2e/...
+# Note: Integration and E2E tests are provided as .example templates
+# Copy and customize them for your specific use case
 ```
 
 **Test Status:**
@@ -622,14 +619,15 @@ go test ./tests/e2e/...
 ✅ features/analyzer    - All tests passing
 ✅ features/reviewer    - All tests passing
 ✅ features/standards   - All tests passing
-✅ features/webhook     - All tests passing
+❌ features/webhook     - Build failed (NewServer signature mismatch)
 ✅ features/fixer       - All tests passing
 ✅ features/gitops      - All tests passing
 ✅ pkg/config          - All tests passing
 ✅ pkg/github          - All tests passing
 ✅ pkg/performance     - All tests passing
 ------------------------------------------
-Total: 174 test cases passing across 11 test files
+Total: 58 test functions (many with multiple sub-tests) across 11 test files
+Note: Webhook tests have compilation errors that need fixing
 ```
 
 ### Run Locally
@@ -654,7 +652,7 @@ go build -o github-code-agent cmd/agent/main.go
 docker build -t github-code-agent .
 
 # Run
-docker run -p 8080:8080 --env-file .env github-code-agent
+docker run -p 8001:8001 --env-file .env github-code-agent
 
 # Build with specific Go version
 docker build --build-arg GO_VERSION=1.24.13 -t github-code-agent .
@@ -770,10 +768,10 @@ make lint
 
 ### ✅ Well-Tested
 
-- 174 test cases across 11 test files
+- 58 test functions (with multiple sub-tests) across 11 test files
 - Comprehensive unit test coverage
 - Mock infrastructure for reliable testing
-- All tests passing
+- Most tests passing (52/58, webhook tests have compilation errors)
 
 ### ✅ Performance Leader
 
@@ -818,14 +816,13 @@ The project includes a production-ready multi-stage Dockerfile:
 - Multi-stage build for minimal image size
 - Go 1.24.13-alpine base image
 - Non-root user (appuser:1000)
-- Health check endpoint
 - CA certificates for HTTPS
 
 **Build and run:**
 
 ```bash
 docker build -t github-code-agent .
-docker run -d -p 8080:8080 --env-file .env --name code-agent github-code-agent
+docker run -d -p 8001:8001 --env-file .env --name code-agent github-code-agent
 ```
 
 ### Kubernetes Deployment
@@ -917,11 +914,6 @@ _FREE (Self-Deployed):_
 - Startup uses it for their own development
 
 _Requires License (Hosted/SaaS):_
-rojects
-
-- Startup uses it for their own development
-
-_Requires License (Hosted/SaaS):_
 
 - You charge customers for code review services
 - SaaS product offering AI code reviews
@@ -935,7 +927,7 @@ See the [LICENSE](LICENSE) file for full details.
 
 When using or modifying this work, please provide attribution as follows:
 
-```
+```text
 Based on af-code-agent by Yong Cheng Low
 (https://github.com/yongchenglow/af-code-agent), licensed under CC BY-NC 4.0
 ```
@@ -959,8 +951,8 @@ For issues and questions:
 
 ---
 
-**Last Updated:** 2026-02-07
+**Last Updated:** 2026-02-08
 **Version:** 1.0.0
-**Go Version:** 1.24.0
-**Tests:** 174 passing
+**Go Version:** 1.24.13
+**Tests:** 58 functions (52 passing, 6 with build errors)
 **Status:** ✅ Active Development

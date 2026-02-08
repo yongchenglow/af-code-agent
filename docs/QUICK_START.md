@@ -23,10 +23,10 @@ cat ~/.kube/config | base64 | pbcopy
 # Add as: KUBECONFIG_PROD
 ```
 
-
 ### Cloudflare Secrets
 
 Required secrets:
+
 - `CLOUDFLARE_API_TOKEN` - API token with DNS & Tunnel edit permissions
 - `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID
 - `CLOUDFLARE_TUNNEL_ID` - Your tunnel ID
@@ -73,6 +73,7 @@ git push origin main
 ```
 
 GitHub Actions will automatically:
+
 1. Build and test the code
 2. Create Docker image
 3. Push to GHCR
@@ -116,10 +117,10 @@ kubectl logs -f deployment/agentfield-control-plane -n agentfield
 
 ```bash
 # Port forward to test locally
-kubectl port-forward svc/agentfield-control-plane 8080:8080 -n agentfield
+kubectl port-forward svc/agentfield-control-plane 8001:8001 -n agentfield
 
-# In another terminal, test the health endpoint
-curl http://localhost:8080/health
+# In another terminal, test the webhook endpoint
+curl -X POST http://localhost:8001/webhook
 ```
 
 ## Step 7: Access via Public URL
@@ -165,38 +166,39 @@ kubectl get secret ghcr-secret -n default -o yaml | \
 
 ## Architecture
 
-```
-┌──────────────┐
-│ GitHub       │
-│ (Push main)  │
-└──────┬───────┘
-       │
-       ↓
-┌──────────────────────────────────────┐
-│ GitHub Actions Workflow              │
-│ 1. Build & Test                      │
-│ 2. Docker Build (multi-arch)         │
-│ 3. Push to GHCR                      │
-│ 4. Deploy to K8s with Helm           │
-│ 5. Configure Cloudflare              │
-└──────┬───────────────────────────────┘
-       │
-       ↓
-┌──────────────────────────────────────┐
-│ Kubernetes (agentfield namespace)    │
-│ ┌────────────────────────────────┐  │
-│ │ agentfield-control-plane       │  │
-│ │ - Deployment (2-5 pods)        │  │
-│ │ - Service (NodePort 30007)     │  │
-│ │ - HPA (autoscaling)            │  │
-│ └────────────────────────────────┘  │
-└──────┬───────────────────────────────┘
-       │
-       ↓
-┌──────────────────────────────────────┐
-│ Cloudflare Tunnel + DNS              │
-│ agentfield.yongchenglow.com          │
-└──────────────────────────────────────┘
+```mermaid
+graph TB
+    GH[GitHub<br/>Push to main]
+
+    subgraph "GitHub Actions Workflow"
+        BUILD[1. Build & Test]
+        DOCKER[2. Docker Build multi-arch]
+        PUSH[3. Push to GHCR]
+        DEPLOY[4. Deploy to K8s with Helm]
+        CF[5. Configure Cloudflare]
+
+        BUILD --> DOCKER --> PUSH --> DEPLOY --> CF
+    end
+
+    subgraph "Kubernetes - agentfield namespace"
+        CP[agentfield-control-plane<br/>Deployment 2-5 pods<br/>Service NodePort 30007<br/>HPA autoscaling]
+    end
+
+    TUNNEL[Cloudflare Tunnel + DNS<br/>agentfield.yongchenglow.com]
+
+    GH --> BUILD
+    DEPLOY --> CP
+    CP --> TUNNEL
+    TUNNEL --> PUBLIC[Public HTTPS Access]
+
+    style GH fill:#e1f5ff
+    style BUILD fill:#d4edda
+    style DOCKER fill:#d4edda
+    style PUSH fill:#d4edda
+    style DEPLOY fill:#d4edda
+    style CF fill:#d4edda
+    style CP fill:#fff3cd
+    style TUNNEL fill:#f8d7da
 ```
 
 ## URL
@@ -206,6 +208,9 @@ kubectl get secret ghcr-secret -n default -o yaml | \
 ## Support
 
 For detailed information, see:
+
+For detailed information, see:
+
 - [DEPLOYMENT.md](./DEPLOYMENT.md) - Comprehensive deployment guide
 - [README.md](../README.md) - Project overview and features
 - [GitHub Actions](../../.github/workflows/) - Workflow files
