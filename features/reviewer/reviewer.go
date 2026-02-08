@@ -6,11 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
 	"github.com/yourorg/github-code-agent/features/analyzer"
+	"github.com/yourorg/github-code-agent/pkg/constants"
+	"github.com/yourorg/github-code-agent/pkg/utils"
 )
 
 // Reviewer handles AI-powered code review
@@ -43,15 +44,15 @@ func (r *Reviewer) ReviewCode(ctx context.Context, files []*analyzer.FileChange,
 	// Build review prompt
 	prompt := buildReviewPrompt(reviewableFiles, prContext)
 
-	// Create context with 10 minute timeout for large reviews
-	aiCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	// Create context with timeout for large reviews
+	aiCtx, cancel := context.WithTimeout(ctx, constants.DefaultAITimeout)
 	defer cancel()
 
 	// Use AgentField's built-in AI method
 	response, err := r.agent.AI(aiCtx, prompt,
 		ai.WithSystem(buildReviewSystemPrompt()),
-		ai.WithTemperature(0.2),
-		ai.WithMaxTokens(4000))
+		ai.WithTemperature(constants.DefaultAITemperature),
+		ai.WithMaxTokens(constants.ReviewAIMaxTokens))
 
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -83,15 +84,15 @@ func (r *Reviewer) DetectSecurityIssues(ctx context.Context, files []*analyzer.F
 	// Build security-focused prompt
 	prompt := buildSecurityPrompt(codeFiles)
 
-	// Create context with 10 minute timeout for security analysis
-	aiCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	// Create context with timeout for security analysis
+	aiCtx, cancel := context.WithTimeout(ctx, constants.DefaultAITimeout)
 	defer cancel()
 
 	// Use AI for security analysis with lower temperature for consistency
 	response, err := r.agent.AI(aiCtx, prompt,
 		ai.WithSystem(buildSecuritySystemPrompt()),
-		ai.WithTemperature(0.1),
-		ai.WithMaxTokens(3000))
+		ai.WithTemperature(constants.LowAITemperature),
+		ai.WithMaxTokens(constants.SecurityAIMaxTokens))
 
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -201,8 +202,8 @@ func buildReviewPrompt(files []*analyzer.FileChange, prContext map[string]interf
 
 	// Add file changes
 	for i, file := range files {
-		if i >= 5 { // Limit to first 5 files to avoid token limits
-			builder.WriteString(fmt.Sprintf("\n... and %d more files\n", len(files)-5))
+		if i >= constants.MaxReviewableFiles {
+			builder.WriteString(fmt.Sprintf("\n... and %d more files\n", len(files)-constants.MaxReviewableFiles))
 			break
 		}
 
@@ -211,20 +212,12 @@ func buildReviewPrompt(files []*analyzer.FileChange, prContext map[string]interf
 
 		// Use patch (diff) instead of full content when available - much smaller
 		if file.Patch != "" {
-			// Truncate patches if too long
-			patch := file.Patch
-			if len(patch) > 800 {
-				patch = patch[:800] + "\n... (truncated)"
-			}
+			patch := utils.TruncateContent(file.Patch, constants.MaxPatchLength)
 			builder.WriteString("Diff:\n```diff\n")
 			builder.WriteString(patch)
 			builder.WriteString("\n```\n\n")
 		} else if file.Content != "" {
-			// Only send content if no patch available, and keep it small
-			content := file.Content
-			if len(content) > 800 {
-				content = content[:800] + "\n... (truncated)"
-			}
+			content := utils.TruncateContent(file.Content, constants.MaxContentLength)
 			builder.WriteString("```" + file.Language + "\n")
 			builder.WriteString(content)
 			builder.WriteString("\n```\n\n")
@@ -241,17 +234,14 @@ func buildSecurityPrompt(files []*analyzer.FileChange) string {
 	builder.WriteString("Analyze the following code for security vulnerabilities:\n\n")
 
 	for i, file := range files {
-		if i >= 5 { // Limit to first 5 files
+		if i >= constants.MaxReviewableFiles {
 			break
 		}
 
 		builder.WriteString(fmt.Sprintf("File: %s (Language: %s)\n", file.Filename, file.Language))
 
 		if file.Content != "" {
-			content := file.Content
-			if len(content) > 2000 {
-				content = content[:2000] + "\n... (truncated)"
-			}
+			content := utils.TruncateContent(file.Content, constants.MaxSecurityContentLength)
 			builder.WriteString("```" + file.Language + "\n")
 			builder.WriteString(content)
 			builder.WriteString("\n```\n\n")
@@ -264,7 +254,7 @@ func buildSecurityPrompt(files []*analyzer.FileChange) string {
 // parseReviewResponse parses the AI response into a ReviewReport
 func parseReviewResponse(text string) (*ReviewReport, error) {
 	// Try to extract JSON from the response
-	jsonText := extractJSON(text)
+	jsonText := utils.ExtractJSON(text)
 
 	var response struct {
 		Issues  []*Issue `json:"issues"`
@@ -310,7 +300,7 @@ func parseReviewResponse(text string) (*ReviewReport, error) {
 
 // parseSecurityIssues parses security issues from AI response
 func parseSecurityIssues(text string) ([]*SecurityIssue, error) {
-	jsonText := extractJSON(text)
+	jsonText := utils.ExtractJSON(text)
 
 	var issues []*SecurityIssue
 
@@ -329,52 +319,18 @@ func parseSecurityIssues(text string) ([]*SecurityIssue, error) {
 	return issues, nil
 }
 
-// extractJSON attempts to extract JSON from text (handles markdown code blocks)
-func extractJSON(text string) string {
-	// Remove markdown code blocks if present
-	text = strings.TrimSpace(text)
-
-	// Check for ```json blocks
-	if strings.Contains(text, "```json") {
-		start := strings.Index(text, "```json") + 7
-		end := strings.Index(text[start:], "```")
-		if end > 0 {
-			return strings.TrimSpace(text[start : start+end])
-		}
-	}
-
-	// Check for ``` blocks
-	if strings.HasPrefix(text, "```") {
-		lines := strings.Split(text, "\n")
-		if len(lines) > 2 {
-			return strings.Join(lines[1:len(lines)-1], "\n")
-		}
-	}
-
-	// Try to find JSON array first (more specific)
-	if idx := strings.Index(text, "["); idx >= 0 {
-		return text[idx:]
-	}
-	// Then try JSON object
-	if idx := strings.Index(text, "{"); idx >= 0 {
-		return text[idx:]
-	}
-
-	return text
-}
-
 // filterReviewableFiles filters out files that shouldn't be reviewed
 func filterReviewableFiles(files []*analyzer.FileChange) []*analyzer.FileChange {
 	var reviewable []*analyzer.FileChange
 
 	for _, file := range files {
 		// Skip deleted files
-		if file.Status == "removed" {
+		if file.Status == constants.FileStatusRemoved {
 			continue
 		}
 
 		// Skip binary files and common non-code files
-		if shouldSkipFile(file.Filename) {
+		if utils.ShouldSkipFile(file.Filename) {
 			continue
 		}
 
@@ -389,69 +345,15 @@ func filterCodeFiles(files []*analyzer.FileChange) []*analyzer.FileChange {
 	var codeFiles []*analyzer.FileChange
 
 	for _, file := range files {
-		if file.Status == "removed" {
+		if file.Status == constants.FileStatusRemoved {
 			continue
 		}
 
 		// Only include known programming languages
-		if isCodeLanguage(file.Language) && file.Content != "" {
+		if utils.IsCodeLanguage(file.Language) && file.Content != "" {
 			codeFiles = append(codeFiles, file)
 		}
 	}
 
 	return codeFiles
-}
-
-// shouldSkipFile determines if a file should be skipped during review
-func shouldSkipFile(filename string) bool {
-	skipExtensions := []string{
-		".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
-		".pdf", ".zip", ".tar", ".gz",
-		".lock", ".sum", "lock.json",
-		".min.js", ".min.css",
-	}
-
-	for _, ext := range skipExtensions {
-		if strings.HasSuffix(strings.ToLower(filename), ext) {
-			return true
-		}
-	}
-
-	skipPatterns := []string{
-		"node_modules/",
-		"vendor/",
-		".git/",
-		"dist/",
-		"build/",
-		"target/",
-	}
-
-	for _, pattern := range skipPatterns {
-		if strings.Contains(filename, pattern) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// isCodeLanguage checks if the language is a programming language
-func isCodeLanguage(lang string) bool {
-	codeLanguages := map[string]bool{
-		"go":         true,
-		"python":     true,
-		"javascript": true,
-		"typescript": true,
-		"java":       true,
-		"c":          true,
-		"cpp":        true,
-		"csharp":     true,
-		"ruby":       true,
-		"php":        true,
-		"rust":       true,
-		"kotlin":     true,
-		"swift":      true,
-	}
-
-	return codeLanguages[lang]
 }

@@ -81,12 +81,12 @@ func reviewCodeReasoner(ctx context.Context, reviewer *Reviewer, input map[strin
 
 	return map[string]any{
 		"report": map[string]any{
-			"issues":              issuesAny,
-			"summary":             report.Summary,
-			"total_issues":        report.TotalIssues,
-			"issues_by_severity":  report.IssuesBySeverity,
-			"issues_by_category":  report.IssuesByCategory,
-			"model":               report.Model,
+			"issues":             issuesAny,
+			"summary":            report.Summary,
+			"total_issues":       report.TotalIssues,
+			"issues_by_severity": report.IssuesBySeverity,
+			"issues_by_category": report.IssuesByCategory,
+			"model":              report.Model,
 		},
 		"model": report.Model,
 	}, nil

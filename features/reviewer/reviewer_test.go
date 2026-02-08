@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/yourorg/github-code-agent/features/analyzer"
+	"github.com/yourorg/github-code-agent/pkg/utils"
 )
 
 func TestFilterReviewableFiles(t *testing.T) {
@@ -70,7 +71,7 @@ func TestShouldSkipFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.filename, func(t *testing.T) {
-			result := shouldSkipFile(tt.filename)
+			result := utils.ShouldSkipFile(tt.filename)
 			if result != tt.expected {
 				t.Errorf("Expected %v for %s, got %v", tt.expected, tt.filename, result)
 			}
@@ -94,7 +95,7 @@ func TestIsCodeLanguage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.lang, func(t *testing.T) {
-			result := isCodeLanguage(tt.lang)
+			result := utils.IsCodeLanguage(tt.lang)
 			if result != tt.expected {
 				t.Errorf("Expected %v for %s, got %v", tt.expected, tt.lang, result)
 			}
@@ -132,7 +133,7 @@ func TestExtractJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := extractJSON(tt.input)
+			result := utils.ExtractJSON(tt.input)
 			if result != tt.expected {
 				t.Errorf("Expected %s, got %s", tt.expected, result)
 			}

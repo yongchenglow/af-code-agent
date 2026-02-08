@@ -168,7 +168,7 @@ func longFunc() {
 		Language: "go",
 	}
 
-	violations := validator.checkGoFunctionLength(ctx, 5)
+	violations := validator.goValidator.CheckFunctionLength(ctx, 5)
 
 	if len(violations) == 0 {
 		t.Error("Expected violation for long function")

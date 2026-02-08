@@ -3,11 +3,11 @@ package analyzer
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/google/go-github/v57/github"
 	ghclient "github.com/yourorg/github-code-agent/pkg/github"
+	"github.com/yourorg/github-code-agent/pkg/utils"
 )
 
 // Analyzer handles code analysis
@@ -43,7 +43,7 @@ func (a *Analyzer) AnalyzePR(ctx context.Context, owner, repo string, prNumber i
 			Changes:   file.Changes,
 			Patch:     file.Patch,
 			BlobURL:   file.BlobURL,
-			Language:  detectLanguage(file.Filename),
+			Language:  utils.DetectLanguage(file.Filename),
 		}
 
 		// Fetch file content for analysis
@@ -128,55 +128,8 @@ func CalculateComplexity(content string) (*Metrics, error) {
 	}, nil
 }
 
-// detectLanguage detects the programming language from filename
-func detectLanguage(filename string) string {
-	ext := strings.ToLower(filepath.Ext(filename))
-
-	languageMap := map[string]string{
-		".go":    "go",
-		".py":    "python",
-		".js":    "javascript",
-		".ts":    "typescript",
-		".jsx":   "javascript",
-		".tsx":   "typescript",
-		".java":  "java",
-		".c":     "c",
-		".cpp":   "cpp",
-		".cs":    "csharp",
-		".rb":    "ruby",
-		".php":   "php",
-		".rs":    "rust",
-		".kt":    "kotlin",
-		".swift": "swift",
-	}
-
-	if lang, ok := languageMap[ext]; ok {
-		return lang
-	}
-
-	return "unknown"
-}
-
 // ShouldIgnoreFile checks if a file should be ignored based on patterns
+// Deprecated: Use utils.ShouldIgnoreFile instead
 func ShouldIgnoreFile(filename string, ignorePatterns []string) bool {
-	for _, pattern := range ignorePatterns {
-		// Simple pattern matching (can be enhanced with glob patterns)
-		if strings.HasSuffix(pattern, "**") {
-			// Directory pattern
-			prefix := strings.TrimSuffix(pattern, "**")
-			if strings.HasPrefix(filename, prefix) {
-				return true
-			}
-		} else if strings.HasPrefix(pattern, "*.") {
-			// Extension pattern
-			ext := strings.TrimPrefix(pattern, "*")
-			if strings.HasSuffix(filename, ext) {
-				return true
-			}
-		} else if filename == pattern {
-			// Exact match
-			return true
-		}
-	}
-	return false
+	return utils.ShouldIgnoreFile(filename, ignorePatterns)
 }

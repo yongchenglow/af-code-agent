@@ -14,17 +14,13 @@ import (
 
 // Server wraps the webhook HTTP handler
 type Server struct {
-	agent         *agent.Agent
-	webhookSecret string
-	ghClient      *ghpkg.Client
+	service *Service
 }
 
 // NewServer creates a new webhook server
 func NewServer(app *agent.Agent, webhookSecret string, ghClient *ghpkg.Client) *Server {
 	return &Server{
-		agent:         app,
-		webhookSecret: webhookSecret,
-		ghClient:      ghClient,
+		service: NewService(app, webhookSecret, ghClient),
 	}
 }
 
@@ -57,13 +53,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate signature
-	if err := ValidateSignature(body, signature, s.webhookSecret); err != nil {
-		log.Printf("Webhook signature validation failed: %v", err)
-		http.Error(w, "Invalid signature", http.StatusUnauthorized)
-		return
-	}
-
 	// Get event type from header
 	eventType := r.Header.Get("X-GitHub-Event")
 	if eventType == "" {
@@ -72,41 +61,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse JSON payload
-	var payload map[string]any
-	if err := json.Unmarshal(body, &payload); err != nil {
-		log.Printf("Failed to parse JSON payload: %v", err)
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-
-	// Call the handle_webhook reasoner
-	input := map[string]any{
-		"event_type":     eventType,
-		"payload":        payload,
-		"payload_raw":    body,
-		"signature":      signature,
-		"webhook_secret": s.webhookSecret,
-	}
-
-	// Add agent and GitHub client to context so they can be retrieved by reasoners
-	ctx := r.Context()
-	ctx = withAgent(ctx, s.agent)
-	ctx = context.WithValue(ctx, "github_client", s.ghClient)
-
 	// Process webhook asynchronously (fire-and-forget)
 	// Respond immediately to GitHub to avoid timeout
 	go func() {
-		// Use background context for async processing (not tied to HTTP request)
 		bgCtx := context.Background()
-		bgCtx = withAgent(bgCtx, s.agent)
-		bgCtx = context.WithValue(bgCtx, "github_client", s.ghClient)
-
-		_, err := s.agent.CallLocal(bgCtx, "handle_webhook", input)
-		if err != nil {
+		if err := s.service.ProcessWebhook(bgCtx, eventType, body, signature); err != nil {
 			log.Printf("Webhook processing failed: %v", err)
-		} else {
-			log.Printf("Webhook processed successfully: %s", eventType)
 		}
 	}()
 
@@ -124,9 +84,4 @@ func RegisterWebhookHandler(mux *http.ServeMux, app *agent.Agent, webhookSecret 
 	server := NewServer(app, webhookSecret, ghClient)
 	mux.Handle("/webhook", server)
 	log.Println("Webhook handler registered at /webhook")
-}
-
-// withAgent adds the agent instance to the context
-func withAgent(ctx context.Context, agent *agent.Agent) context.Context {
-	return context.WithValue(ctx, "agent", agent)
 }

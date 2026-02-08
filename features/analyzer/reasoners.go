@@ -156,11 +156,11 @@ func AnalyzePushReasoner(ctx context.Context, input map[string]any) (any, error)
 		}
 
 		return map[string]any{
-			"success":    true,
-			"pr_exists":  true,
-			"pr_number":  prNumber,
-			"message":    fmt.Sprintf("PR #%d review workflow triggered", prNumber),
-			"result":     result,
+			"success":   true,
+			"pr_exists": true,
+			"pr_number": prNumber,
+			"message":   fmt.Sprintf("PR #%d review workflow triggered", prNumber),
+			"result":    result,
 		}, nil
 	}
 
@@ -168,10 +168,10 @@ func AnalyzePushReasoner(ctx context.Context, input map[string]any) (any, error)
 	log.Printf("No existing PR found for branch %s", branch)
 
 	return map[string]any{
-		"success":    true,
-		"pr_exists":  false,
-		"message":    fmt.Sprintf("No PR found for branch %s. Create a PR to trigger review.", branch),
-		"commits":    len(commits),
+		"success":   true,
+		"pr_exists": false,
+		"message":   fmt.Sprintf("No PR found for branch %s. Create a PR to trigger review.", branch),
+		"commits":   len(commits),
 	}, nil
 }
 

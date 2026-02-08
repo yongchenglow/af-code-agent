@@ -12,6 +12,7 @@ import (
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/yourorg/github-code-agent/features/analyzer"
+	ghpkg "github.com/yourorg/github-code-agent/pkg/github"
 )
 
 func TestWebhookSignatureValidation(t *testing.T) {
@@ -29,9 +30,15 @@ func TestWebhookSignatureValidation(t *testing.T) {
 	RegisterReasoners(app)
 	analyzer.RegisterReasoners(app)
 
+	// Create mock GitHub client
+	ghClient, err := ghpkg.NewClient("test-token")
+	if err != nil {
+		t.Fatalf("Failed to create GitHub client: %v", err)
+	}
+
 	// Create webhook server
 	webhookSecret := "test-secret-123"
-	server := NewServer(app, webhookSecret)
+	server := NewServer(app, webhookSecret, ghClient)
 
 	tests := []struct {
 		name           string

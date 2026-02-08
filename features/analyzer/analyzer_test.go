@@ -2,6 +2,8 @@ package analyzer
 
 import (
 	"testing"
+
+	"github.com/yourorg/github-code-agent/pkg/utils"
 )
 
 func TestDetectLanguage(t *testing.T) {
@@ -20,9 +22,9 @@ func TestDetectLanguage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.filename, func(t *testing.T) {
-			got := detectLanguage(tt.filename)
+			got := utils.DetectLanguage(tt.filename)
 			if got != tt.want {
-				t.Errorf("detectLanguage(%q) = %v, want %v", tt.filename, got, tt.want)
+				t.Errorf("utils.DetectLanguage(%q) = %v, want %v", tt.filename, got, tt.want)
 			}
 		})
 	}

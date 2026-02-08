@@ -8,12 +8,8 @@ import (
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
-)
-
-const (
-	MaxFixAttempts     = 3
-	DefaultTemperature = 0.1 // Low temperature for deterministic fixes
-	DefaultMaxTokens   = 2000
+	"github.com/yourorg/github-code-agent/pkg/constants"
+	"github.com/yourorg/github-code-agent/pkg/utils"
 )
 
 // GenerateFixesWithValidation generates and validates fixes with retry loop
@@ -145,7 +141,7 @@ func generateSingleFix(ctx context.Context, agentInstance *agent.Agent, issue ma
 	}
 
 	// Extract relevant code section (context around the issue)
-	originalCode := extractCodeSection(fileContent, line, 5)
+	originalCode := utils.ExtractCodeSection(fileContent, line, constants.MaxFileContextLines)
 
 	// Build fix prompt
 	prompt := buildFixPrompt(issue, originalCode, language)
@@ -157,22 +153,22 @@ func generateSingleFix(ctx context.Context, agentInstance *agent.Agent, issue ma
 			strings.Join(previousErrors, "\n"))
 	}
 
-	// Create context with 10 minute timeout for fix generation
-	aiCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	// Create context with timeout for fix generation
+	aiCtx, cancel := context.WithTimeout(ctx, constants.DefaultAITimeout)
 	defer cancel()
 
 	// Call AI to generate fix
 	response, err := agentInstance.AI(aiCtx, prompt,
 		ai.WithSystem(buildFixSystemPrompt()),
-		ai.WithTemperature(DefaultTemperature),
-		ai.WithMaxTokens(DefaultMaxTokens))
+		ai.WithTemperature(constants.LowAITemperature),
+		ai.WithMaxTokens(constants.FixerAIMaxTokens))
 
 	if err != nil {
 		return nil, fmt.Errorf("AI fix generation failed: %w", err)
 	}
 
 	// Parse response to extract fixed code
-	fixedCode := extractCodeFromResponse(response.Text())
+	fixedCode := utils.ExtractCodeFromResponse(response.Text())
 
 	patch := &CodePatch{
 		IssueID:      issue["id"].(string),
@@ -182,7 +178,6 @@ func generateSingleFix(ctx context.Context, agentInstance *agent.Agent, issue ma
 		FixedCode:    fixedCode,
 		Description:  description,
 		Line:         line,
-		CreatedAt:    time.Now(),
 	}
 
 	return patch, nil
@@ -237,55 +232,6 @@ func buildFixSystemPrompt() string {
 
 Output ONLY the fixed code, no markdown formatting, no explanations, no comments about the changes.
 Just the pure, corrected code that can be directly used as a replacement.`
-}
-
-// extractCodeSection extracts a section of code around a line number
-func extractCodeSection(content string, line, contextLines int) string {
-	lines := strings.Split(content, "\n")
-
-	start := line - contextLines - 1
-	if start < 0 {
-		start = 0
-	}
-
-	end := line + contextLines
-	if end > len(lines) {
-		end = len(lines)
-	}
-
-	return strings.Join(lines[start:end], "\n")
-}
-
-// extractCodeFromResponse extracts code from AI response
-func extractCodeFromResponse(response string) string {
-	// Remove markdown code blocks if present
-	code := response
-
-	// Check for ```language blocks
-	if strings.Contains(code, "```") {
-		parts := strings.Split(code, "```")
-		if len(parts) >= 3 {
-			// Get the code between first ``` and second ```
-			code = parts[1]
-			// Remove language identifier if present
-			lines := strings.Split(code, "\n")
-			if len(lines) > 0 {
-				// First line might be language identifier
-				firstLine := strings.TrimSpace(lines[0])
-				if firstLine == "go" || firstLine == "python" || firstLine == "javascript" || firstLine == "typescript" {
-					code = strings.Join(lines[1:], "\n")
-				}
-			}
-		}
-	}
-
-	return strings.TrimSpace(code)
-}
-
-// GenerateFixDescription generates a human-readable description of the fix
-func GenerateFixDescription(patch *CodePatch) string {
-	return fmt.Sprintf("Fixed issue in %s at line %d: %s",
-		patch.FilePath, patch.Line, patch.Description)
 }
 
 // CreateBatchFixSummary creates a summary of batch fix results

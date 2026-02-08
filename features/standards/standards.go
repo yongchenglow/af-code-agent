@@ -12,15 +12,21 @@ import (
 
 // Validator handles standards validation
 type Validator struct {
-	config *config.Config
-	rules  []*Rule
+	config          *config.Config
+	rules           []*Rule
+	goValidator     *GoValidator
+	pythonValidator *PythonValidator
+	jsValidator     *JSValidator
 }
 
 // NewValidator creates a new standards validator
 func NewValidator(cfg *config.Config) *Validator {
 	v := &Validator{
-		config: cfg,
-		rules:  []*Rule{},
+		config:          cfg,
+		rules:           []*Rule{},
+		goValidator:     NewGoValidator(),
+		pythonValidator: NewPythonValidator(),
+		jsValidator:     NewJSValidator(),
 	}
 
 	// Register built-in rules
@@ -188,19 +194,16 @@ func (v *Validator) validateFunctionLength(ctx RuleContext) ([]*Violation, error
 		return nil, nil
 	}
 
-	var violations []*Violation
-
-	// Simple heuristic for function detection (language-specific parsers would be better)
 	switch ctx.Language {
 	case "go":
-		violations = v.checkGoFunctionLength(ctx, maxLength)
+		return v.goValidator.CheckFunctionLength(ctx, maxLength), nil
 	case "python":
-		violations = v.checkPythonFunctionLength(ctx, maxLength)
+		return v.pythonValidator.CheckFunctionLength(ctx, maxLength), nil
 	case "javascript", "typescript":
-		violations = v.checkJSFunctionLength(ctx, maxLength)
+		return v.jsValidator.CheckFunctionLength(ctx, maxLength), nil
+	default:
+		return nil, nil
 	}
-
-	return violations, nil
 }
 
 // validateNamingConventions checks naming conventions
@@ -247,17 +250,16 @@ func (v *Validator) validateDocumentation(ctx RuleContext) ([]*Violation, error)
 		return nil, nil
 	}
 
-	var violations []*Violation
 	lines := strings.Split(ctx.Content, "\n")
 
 	switch ctx.Language {
 	case "go":
-		violations = v.checkGoDocumentation(ctx, lines)
+		return v.goValidator.CheckDocumentation(ctx, lines), nil
 	case "python":
-		violations = v.checkPythonDocumentation(ctx, lines)
+		return v.pythonValidator.CheckDocumentation(ctx, lines), nil
+	default:
+		return nil, nil
 	}
-
-	return violations, nil
 }
 
 // validateNoHardcodedSecrets checks for hardcoded secrets
@@ -305,242 +307,6 @@ func (v *Validator) validateNoHardcodedSecrets(ctx RuleContext) ([]*Violation, e
 	}
 
 	return violations, nil
-}
-
-// Language-specific helper functions
-
-func (v *Validator) checkGoFunctionLength(ctx RuleContext, maxLength int) []*Violation {
-	var violations []*Violation
-	lines := strings.Split(ctx.Content, "\n")
-
-	funcPattern := regexp.MustCompile(`^func\s+(\w+)`)
-	currentFunc := ""
-	funcStartLine := 0
-	braceCount := 0
-	inFunc := false
-
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-
-		if funcPattern.MatchString(trimmed) {
-			matches := funcPattern.FindStringSubmatch(trimmed)
-			currentFunc = matches[1]
-			funcStartLine = i + 1
-			braceCount = strings.Count(line, "{") - strings.Count(line, "}")
-			inFunc = true
-			continue
-		}
-
-		if inFunc {
-			braceCount += strings.Count(line, "{") - strings.Count(line, "}")
-			if braceCount == 0 {
-				funcLength := i - funcStartLine + 1
-				if funcLength > maxLength {
-					violations = append(violations, &Violation{
-						FilePath:    ctx.FilePath,
-						Line:        funcStartLine,
-						Rule:        "function-length",
-						Message:     fmt.Sprintf("Function '%s' exceeds maximum length of %d lines (current: %d)", currentFunc, maxLength, funcLength),
-						Suggestion:  "Consider breaking this function into smaller functions",
-						AutoFixable: false,
-					})
-				}
-				inFunc = false
-			}
-		}
-	}
-
-	return violations
-}
-
-func (v *Validator) checkPythonFunctionLength(ctx RuleContext, maxLength int) []*Violation {
-	var violations []*Violation
-	lines := strings.Split(ctx.Content, "\n")
-
-	funcPattern := regexp.MustCompile(`^\s*def\s+(\w+)`)
-	currentFunc := ""
-	funcStartLine := 0
-	inFunc := false
-	baseIndent := 0
-
-	for i, line := range lines {
-		if funcPattern.MatchString(line) {
-			matches := funcPattern.FindStringSubmatch(line)
-			currentFunc = matches[1]
-			funcStartLine = i + 1
-			baseIndent = len(line) - len(strings.TrimLeft(line, " \t"))
-			inFunc = true
-			continue
-		}
-
-		if inFunc {
-			trimmed := strings.TrimSpace(line)
-			if trimmed == "" {
-				continue
-			}
-
-			indent := len(line) - len(strings.TrimLeft(line, " \t"))
-			if indent <= baseIndent && trimmed != "" {
-				funcLength := i - funcStartLine
-				if funcLength > maxLength {
-					violations = append(violations, &Violation{
-						FilePath:    ctx.FilePath,
-						Line:        funcStartLine,
-						Rule:        "function-length",
-						Message:     fmt.Sprintf("Function '%s' exceeds maximum length of %d lines (current: %d)", currentFunc, maxLength, funcLength),
-						Suggestion:  "Consider breaking this function into smaller functions",
-						AutoFixable: false,
-					})
-				}
-				inFunc = false
-			}
-		}
-	}
-
-	return violations
-}
-
-func (v *Validator) checkJSFunctionLength(ctx RuleContext, maxLength int) []*Violation {
-	var violations []*Violation
-	lines := strings.Split(ctx.Content, "\n")
-
-	funcPattern := regexp.MustCompile(`function\s+(\w+)|const\s+(\w+)\s*=\s*\(.*\)\s*=>|(\w+)\s*\(.*\)\s*{`)
-	currentFunc := ""
-	funcStartLine := 0
-	braceCount := 0
-	inFunc := false
-
-	for i, line := range lines {
-		if funcPattern.MatchString(line) {
-			matches := funcPattern.FindStringSubmatch(line)
-			for _, match := range matches[1:] {
-				if match != "" {
-					currentFunc = match
-					break
-				}
-			}
-			funcStartLine = i + 1
-			braceCount = strings.Count(line, "{") - strings.Count(line, "}")
-			inFunc = true
-			continue
-		}
-
-		if inFunc {
-			braceCount += strings.Count(line, "{") - strings.Count(line, "}")
-			if braceCount == 0 {
-				funcLength := i - funcStartLine + 1
-				if funcLength > maxLength {
-					violations = append(violations, &Violation{
-						FilePath:    ctx.FilePath,
-						Line:        funcStartLine,
-						Rule:        "function-length",
-						Message:     fmt.Sprintf("Function '%s' exceeds maximum length of %d lines (current: %d)", currentFunc, maxLength, funcLength),
-						Suggestion:  "Consider breaking this function into smaller functions",
-						AutoFixable: false,
-					})
-				}
-				inFunc = false
-			}
-		}
-	}
-
-	return violations
-}
-
-func (v *Validator) checkGoDocumentation(ctx RuleContext, lines []string) []*Violation {
-	var violations []*Violation
-
-	funcPattern := regexp.MustCompile(`^func\s+(\w+)`)
-	typePattern := regexp.MustCompile(`^type\s+(\w+)`)
-
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-
-		// Check for exported functions and types (start with capital letter)
-		if funcPattern.MatchString(trimmed) {
-			matches := funcPattern.FindStringSubmatch(trimmed)
-			funcName := matches[1]
-
-			// If exported (starts with capital), check for doc comment
-			if len(funcName) > 0 && funcName[0] >= 'A' && funcName[0] <= 'Z' {
-				// Check previous line for comment
-				if i == 0 || !strings.HasPrefix(strings.TrimSpace(lines[i-1]), "//") {
-					violations = append(violations, &Violation{
-						FilePath:    ctx.FilePath,
-						Line:        i + 1,
-						Rule:        "missing-docs",
-						Message:     fmt.Sprintf("Exported function '%s' is missing documentation", funcName),
-						Suggestion:  fmt.Sprintf("Add a comment like: // %s ...", funcName),
-						AutoFixable: false,
-					})
-				}
-			}
-		}
-
-		if typePattern.MatchString(trimmed) {
-			matches := typePattern.FindStringSubmatch(trimmed)
-			typeName := matches[1]
-
-			if len(typeName) > 0 && typeName[0] >= 'A' && typeName[0] <= 'Z' {
-				if i == 0 || !strings.HasPrefix(strings.TrimSpace(lines[i-1]), "//") {
-					violations = append(violations, &Violation{
-						FilePath:    ctx.FilePath,
-						Line:        i + 1,
-						Rule:        "missing-docs",
-						Message:     fmt.Sprintf("Exported type '%s' is missing documentation", typeName),
-						Suggestion:  fmt.Sprintf("Add a comment like: // %s ...", typeName),
-						AutoFixable: false,
-					})
-				}
-			}
-		}
-	}
-
-	return violations
-}
-
-func (v *Validator) checkPythonDocumentation(ctx RuleContext, lines []string) []*Violation {
-	var violations []*Violation
-
-	funcPattern := regexp.MustCompile(`^\s*def\s+(\w+)`)
-	classPattern := regexp.MustCompile(`^\s*class\s+(\w+)`)
-
-	for i, line := range lines {
-		if funcPattern.MatchString(line) || classPattern.MatchString(line) {
-			// Check next non-empty line for docstring
-			hasDocstring := false
-			for j := i + 1; j < len(lines) && j < i+3; j++ {
-				nextLine := strings.TrimSpace(lines[j])
-				if nextLine == "" {
-					continue
-				}
-				if strings.HasPrefix(nextLine, `"""`) || strings.HasPrefix(nextLine, `'''`) {
-					hasDocstring = true
-					break
-				}
-				break
-			}
-
-			if !hasDocstring {
-				matches := funcPattern.FindStringSubmatch(line)
-				if len(matches) == 0 {
-					matches = classPattern.FindStringSubmatch(line)
-				}
-				name := matches[1]
-
-				violations = append(violations, &Violation{
-					FilePath:    ctx.FilePath,
-					Line:        i + 1,
-					Rule:        "missing-docs",
-					Message:     fmt.Sprintf("Function/class '%s' is missing docstring", name),
-					Suggestion:  "Add a docstring describing the purpose and parameters",
-					AutoFixable: false,
-				})
-			}
-		}
-	}
-
-	return violations
 }
 
 // Helper functions

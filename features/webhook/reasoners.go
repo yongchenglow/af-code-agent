@@ -7,8 +7,8 @@ import (
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/google/go-github/v57/github"
-	ghpkg "github.com/yourorg/github-code-agent/pkg/github"
 	"github.com/yourorg/github-code-agent/pkg/config"
+	ghpkg "github.com/yourorg/github-code-agent/pkg/github"
 )
 
 // RegisterReasoners registers all webhook-related reasoners
@@ -263,13 +263,13 @@ func HandlePREvent(ctx context.Context, input map[string]any) (any, error) {
 
 	// Post review comments and apply fixes using the gitops workflow
 	workflowInput := map[string]any{
-		"owner":      owner,
-		"repo":       repoName,
-		"repo_path":  "/tmp/" + repoName, // Temporary path for git operations
-		"pr_number":  int(prNumber),
-		"mode":       mode,
-		"issues":     issues,
-		"patches":    patches,
+		"owner":     owner,
+		"repo":      repoName,
+		"repo_path": "/tmp/" + repoName, // Temporary path for git operations
+		"pr_number": int(prNumber),
+		"mode":      mode,
+		"issues":    issues,
+		"patches":   patches,
 	}
 
 	workflowResult, err := agentInstance.CallLocal(ctx, "post_review_with_fixes", workflowInput)

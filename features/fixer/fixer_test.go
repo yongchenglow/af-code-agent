@@ -3,6 +3,8 @@ package fixer
 import (
 	"strings"
 	"testing"
+
+	"github.com/yourorg/github-code-agent/pkg/utils"
 )
 
 func TestExtractCodeSection(t *testing.T) {
@@ -42,9 +44,9 @@ line 7`
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := extractCodeSection(code, tt.line, tt.contextLines)
+			got := utils.ExtractCodeSection(code, tt.line, tt.contextLines)
 			if got != tt.want {
-				t.Errorf("extractCodeSection() = %q, want %q", got, tt.want)
+				t.Errorf("utils.ExtractCodeSection() = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -80,29 +82,15 @@ func TestExtractCodeFromResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := extractCodeFromResponse(tt.response)
+			got := utils.ExtractCodeFromResponse(tt.response)
 			if got != tt.want {
-				t.Errorf("extractCodeFromResponse() = %q, want %q", got, tt.want)
+				t.Errorf("utils.ExtractCodeFromResponse() = %q, want %q", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestGenerateFixDescription(t *testing.T) {
-	patch := &CodePatch{
-		IssueID:     "1",
-		Description: "Fix null pointer",
-		FilePath:    "main.go",
-		Line:        10,
-	}
-
-	got := GenerateFixDescription(patch)
-	want := "Fixed issue in main.go at line 10: Fix null pointer"
-
-	if got != want {
-		t.Errorf("GenerateFixDescription() = %q, want %q", got, want)
-	}
-}
+// TestGenerateFixDescription removed - function moved to gitops/message_generator.go
 
 func TestBuildFixPrompt(t *testing.T) {
 	issue := map[string]any{
