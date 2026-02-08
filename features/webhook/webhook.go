@@ -90,21 +90,21 @@ func (h *Handler) parseEvent(eventType string, payload []byte) (*WebhookEvent, e
 		if pr, ok := raw["pull_request"].(map[string]interface{}); ok {
 			prData, _ := json.Marshal(pr)
 			event.PullRequest = &PullRequestPayload{}
-			json.Unmarshal(prData, event.PullRequest)
+			_ = json.Unmarshal(prData, event.PullRequest)
 		}
 
 	case "check_suite":
 		if cs, ok := raw["check_suite"].(map[string]interface{}); ok {
 			csData, _ := json.Marshal(cs)
 			event.CheckSuite = &CheckSuitePayload{}
-			json.Unmarshal(csData, event.CheckSuite)
+			_ = json.Unmarshal(csData, event.CheckSuite)
 		}
 
 	case "workflow_run":
 		if wr, ok := raw["workflow_run"].(map[string]interface{}); ok {
 			wrData, _ := json.Marshal(wr)
 			event.WorkflowRun = &WorkflowRunPayload{}
-			json.Unmarshal(wrData, event.WorkflowRun)
+			_ = json.Unmarshal(wrData, event.WorkflowRun)
 		}
 	}
 

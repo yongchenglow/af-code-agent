@@ -98,7 +98,7 @@ func IsIdentifier(word string) bool {
 	}
 	// Simple check - real implementation would be more robust
 	for _, ch := range word {
-		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_') {
+		if (ch < 'a' || ch > 'z') && (ch < 'A' || ch > 'Z') && (ch < '0' || ch > '9') && ch != '_' {
 			return false
 		}
 	}

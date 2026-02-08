@@ -143,18 +143,18 @@ func TestGetTimeout(t *testing.T) {
 
 func TestLoadEnvironmentConfig(t *testing.T) {
 	// Set test environment variables
-	os.Setenv("GITHUB_TOKEN", "ghp_test_token")
-	os.Setenv("GITHUB_WEBHOOK_SECRET", "test-secret")
-	os.Setenv("OPENAI_API_KEY", "test-api-key")
-	os.Setenv("AI_TEMPERATURE", "0.5")
-	os.Setenv("AI_MAX_TOKENS", "2000")
+	_ = os.Setenv("GITHUB_TOKEN", "ghp_test_token")
+	_ = os.Setenv("GITHUB_WEBHOOK_SECRET", "test-secret")
+	_ = os.Setenv("OPENAI_API_KEY", "test-api-key")
+	_ = os.Setenv("AI_TEMPERATURE", "0.5")
+	_ = os.Setenv("AI_MAX_TOKENS", "2000")
 
 	defer func() {
-		os.Unsetenv("GITHUB_TOKEN")
-		os.Unsetenv("GITHUB_WEBHOOK_SECRET")
-		os.Unsetenv("OPENAI_API_KEY")
-		os.Unsetenv("AI_TEMPERATURE")
-		os.Unsetenv("AI_MAX_TOKENS")
+		_ = os.Unsetenv("GITHUB_TOKEN")
+		_ = os.Unsetenv("GITHUB_WEBHOOK_SECRET")
+		_ = os.Unsetenv("OPENAI_API_KEY")
+		_ = os.Unsetenv("AI_TEMPERATURE")
+		_ = os.Unsetenv("AI_MAX_TOKENS")
 	}()
 
 	cfg, err := LoadEnvironmentConfig()

@@ -220,10 +220,8 @@ func (v *Validator) validateNamingConventions(ctx RuleContext) ([]*Violation, er
 		// This is language-agnostic but could be enhanced per language
 
 		// Example: Check for single-letter variable names (except i, j, k in loops)
-		if strings.Contains(line, "var ") || strings.Contains(line, "let ") {
-			// Extract variable name and check
-			// This is simplified - real implementation would parse properly
-		}
+		// This is simplified - real implementation would parse properly
+		_ = strings.Contains(line, "var ") || strings.Contains(line, "let ")
 
 		// Check for overly long names (> 50 chars)
 		words := strings.Fields(line)
@@ -326,7 +324,7 @@ func isIdentifier(word string) bool {
 	}
 	// Simple check - real implementation would be more robust
 	for _, ch := range word {
-		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_') {
+		if (ch < 'a' || ch > 'z') && (ch < 'A' || ch > 'Z') && (ch < '0' || ch > '9') && ch != '_' {
 			return false
 		}
 	}

@@ -51,8 +51,8 @@ func (r *RateLimitMonitor) Check(ctx context.Context) (*RateLimitInfo, error) {
 		}, nil
 	}
 
-	// Fetch fresh rate limit data
-	rateLimits, _, err := r.client.RateLimits(ctx)
+	// Fetch fresh rate limit data using the new RateLimit service
+	rateLimits, _, err := r.client.RateLimit.Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rate limits: %w", err)
 	}

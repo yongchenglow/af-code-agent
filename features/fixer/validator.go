@@ -101,12 +101,16 @@ func validatePythonSyntax(code string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	if _, err := tmpfile.Write([]byte(code)); err != nil {
 		return fmt.Errorf("failed to write temp file: %w", err)
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
 
 	// Run python syntax check
 	cmd := exec.Command("python3", "-m", "py_compile", tmpfile.Name())
@@ -126,12 +130,16 @@ func validateJSSyntax(code string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	if _, err := tmpfile.Write([]byte(code)); err != nil {
 		return fmt.Errorf("failed to write temp file: %w", err)
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
 
 	// Run node syntax check
 	cmd := exec.Command("node", "--check", tmpfile.Name())
@@ -175,12 +183,16 @@ func runGoLinters(patch *CodePatch, timeout time.Duration) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("failed to create temp file: %v", err)}
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	if _, err := tmpfile.Write([]byte(patch.FixedCode)); err != nil {
 		return []string{fmt.Sprintf("failed to write temp file: %v", err)}
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		return []string{fmt.Sprintf("failed to close temp file: %v", err)}
+	}
 
 	// Try go vet first (more commonly available)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -206,12 +218,16 @@ func runPythonLinters(patch *CodePatch, timeout time.Duration) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("failed to create temp file: %v", err)}
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	if _, err := tmpfile.Write([]byte(patch.FixedCode)); err != nil {
 		return []string{fmt.Sprintf("failed to write temp file: %v", err)}
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		return []string{fmt.Sprintf("failed to close temp file: %v", err)}
+	}
 
 	// Try flake8 (more lenient than pylint)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -241,12 +257,16 @@ func runJSLinters(patch *CodePatch, timeout time.Duration) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("failed to create temp file: %v", err)}
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	if _, err := tmpfile.Write([]byte(patch.FixedCode)); err != nil {
 		return []string{fmt.Sprintf("failed to write temp file: %v", err)}
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		return []string{fmt.Sprintf("failed to close temp file: %v", err)}
+	}
 
 	// Try eslint
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -283,12 +303,16 @@ func formatGoCode(code string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	if _, err := tmpfile.Write([]byte(code)); err != nil {
 		return "", err
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		return "", err
+	}
 
 	cmd := exec.Command("gofmt", tmpfile.Name())
 	output, err := cmd.Output()
@@ -305,12 +329,16 @@ func formatPythonCode(code string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	if _, err := tmpfile.Write([]byte(code)); err != nil {
 		return "", err
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		return "", err
+	}
 
 	cmd := exec.Command("black", "--quiet", tmpfile.Name())
 	if err := cmd.Run(); err != nil {
@@ -332,12 +360,16 @@ func formatJSCode(code string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	if _, err := tmpfile.Write([]byte(code)); err != nil {
 		return "", err
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		return "", err
+	}
 
 	cmd := exec.Command("prettier", "--write", tmpfile.Name())
 	if err := cmd.Run(); err != nil {
@@ -466,13 +498,13 @@ func WritePatchToFile(patch *CodePatch) (string, error) {
 	}
 
 	if _, err := tmpfile.Write([]byte(patch.FixedCode)); err != nil {
-		tmpfile.Close()
-		os.Remove(tmpfile.Name())
+		_ = tmpfile.Close()
+		_ = os.Remove(tmpfile.Name())
 		return "", fmt.Errorf("failed to write patch: %w", err)
 	}
 
 	if err := tmpfile.Close(); err != nil {
-		os.Remove(tmpfile.Name())
+		_ = os.Remove(tmpfile.Name())
 		return "", fmt.Errorf("failed to close temp file: %w", err)
 	}
 

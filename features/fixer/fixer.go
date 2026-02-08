@@ -240,7 +240,7 @@ func CreateBatchFixSummary(result *BatchFixResult) string {
 		return "No fixes were attempted."
 	}
 
-	summary := fmt.Sprintf("Fix Generation Summary:\n")
+	summary := "Fix Generation Summary:\n"
 	summary += fmt.Sprintf("- Total issues: %d\n", result.TotalIssues)
 	summary += fmt.Sprintf("- Successfully fixed: %d\n", result.SuccessCount)
 	summary += fmt.Sprintf("- Failed to fix: %d\n", result.FailureCount)

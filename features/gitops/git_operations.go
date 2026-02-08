@@ -124,7 +124,7 @@ func (g *GitOperations) CloneRepository(ctx context.Context, repoURL, token stri
 	cmd := exec.CommandContext(ctx, "git", "clone", cloneURL, tmpDir)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 		return "", fmt.Errorf("failed to clone repository: %v - %s", err, string(output))
 	}
 
