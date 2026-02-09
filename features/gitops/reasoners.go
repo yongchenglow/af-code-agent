@@ -254,8 +254,15 @@ func postReviewWithFixesReasoner(ctx context.Context, gitops *GitOps, input map[
 		patches = append(patches, patch)
 	}
 
+	// Get GitHub client from context (authenticated for this specific repo)
+	ghClient := getGitHubClientFromContext(ctx)
+	if ghClient == nil {
+		// Fallback to default client
+		ghClient = gitops.ghClient
+	}
+
 	// Execute workflow
-	result, err := PostReviewWithFixes(ctx, gitops.ghClient, owner, repo, repoPath, prNumber, issues, patches, mode)
+	result, err := PostReviewWithFixes(ctx, ghClient, owner, repo, repoPath, prNumber, issues, patches, mode)
 	if err != nil {
 		return nil, err
 	}
@@ -310,6 +317,20 @@ func checkPRExistsReasoner(ctx context.Context, gitops *GitOps, input map[string
 }
 
 // Helper functions
+
+// getGitHubClientFromContext retrieves the authenticated GitHub client from context
+func getGitHubClientFromContext(ctx context.Context) *GitHubClient {
+	// Try to get wrapped client first (from webhook service)
+	if wrappedClient, ok := ctx.Value("github_client").(interface{ GetClient() *github.Client }); ok {
+		return NewGitHubClient(wrappedClient.GetClient())
+	}
+	// Fallback to direct github.Client
+	if client, ok := ctx.Value("github_client").(*github.Client); ok {
+		return NewGitHubClient(client)
+	}
+	return nil
+}
+
 func getString(m map[string]any, key string) string {
 	if v, ok := m[key].(string); ok {
 		return v

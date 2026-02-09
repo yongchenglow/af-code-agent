@@ -33,6 +33,14 @@ func NewService(a *agent.Agent, webhookSecret string, ghClient *ghpkg.Client, cf
 	}
 }
 
+// PrepareContext adds agent, config, and GitHub client to the context
+func (s *Service) PrepareContext(ctx context.Context) context.Context {
+	ctx = context.WithValue(ctx, "agent", s.agent)
+	ctx = context.WithValue(ctx, "config", s.config)
+	ctx = context.WithValue(ctx, "github_client", s.ghClient)
+	return ctx
+}
+
 // ProcessWebhook processes a webhook event
 func (s *Service) ProcessWebhook(ctx context.Context, eventType string, payload []byte, signature string) error {
 	// Validate signature

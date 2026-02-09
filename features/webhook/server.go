@@ -67,7 +67,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Process webhook asynchronously (fire-and-forget)
 	// Respond immediately to GitHub to avoid timeout
 	go func() {
-		bgCtx := context.Background()
+		bgCtx := s.service.PrepareContext(context.Background())
 		if err := s.service.ProcessWebhook(bgCtx, eventType, body, signature); err != nil {
 			log.Printf("Webhook processing failed: %v", err)
 		}
