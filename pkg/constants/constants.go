@@ -79,7 +79,8 @@ const (
 // Environment Variable Keys
 const (
 	EnvAgentFieldURL       = "AGENTFIELD_URL"
-	EnvGitHubToken         = "GITHUB_TOKEN"
+	EnvGitHubAppID         = "GITHUB_APP_ID"
+	EnvGitHubPrivateKey    = "GITHUB_PRIVATE_KEY"
 	EnvGitHubWebhookSecret = "GITHUB_WEBHOOK_SECRET"
 	EnvAIBaseURL           = "AI_BASE_URL"
 	EnvAIModel             = "AI_MODEL"

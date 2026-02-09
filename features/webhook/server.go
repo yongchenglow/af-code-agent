@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
+	"github.com/yourorg/github-code-agent/pkg/config"
 	ghpkg "github.com/yourorg/github-code-agent/pkg/github"
 )
 
@@ -18,9 +19,9 @@ type Server struct {
 }
 
 // NewServer creates a new webhook server
-func NewServer(app *agent.Agent, webhookSecret string, ghClient *ghpkg.Client) *Server {
+func NewServer(app *agent.Agent, webhookSecret string, ghClient *ghpkg.Client, cfg *config.Config) *Server {
 	return &Server{
-		service: NewService(app, webhookSecret, ghClient),
+		service: NewService(app, webhookSecret, ghClient, cfg),
 	}
 }
 
@@ -82,8 +83,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // RegisterWebhookHandler registers the webhook HTTP handler with a standard HTTP server
-func RegisterWebhookHandler(mux *http.ServeMux, app *agent.Agent, webhookSecret string, ghClient *ghpkg.Client) {
-	server := NewServer(app, webhookSecret, ghClient)
+func RegisterWebhookHandler(mux *http.ServeMux, app *agent.Agent, webhookSecret string, ghClient *ghpkg.Client, cfg *config.Config) {
+	server := NewServer(app, webhookSecret, ghClient, cfg)
 	mux.Handle("/webhook", server)
 	log.Println("Webhook handler registered at /webhook")
 }

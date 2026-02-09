@@ -16,8 +16,10 @@ type Config struct {
 
 // AgentConfig contains agent-level settings
 type AgentConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Mode    string `yaml:"mode"` // "yolo" or "safe"
+	Enabled              bool     `yaml:"enabled"`
+	Mode                 string   `yaml:"mode"` // "yolo" or "safe"
+	AllowedRepositories  []string `yaml:"allowed_repositories,omitempty"`
+	AllowedPatterns      []string `yaml:"allowed_patterns,omitempty"`
 }
 
 // WebhooksConfig configures webhook handling
@@ -106,7 +108,8 @@ type NotificationConfig struct {
 // EnvironmentConfig holds environment-based configuration
 type EnvironmentConfig struct {
 	AgentFieldURL       string
-	GitHubToken         string
+	GitHubAppID         string
+	GitHubPrivateKey    string
 	GitHubWebhookSecret string
 	AIBaseURL           string
 	AIModel             string

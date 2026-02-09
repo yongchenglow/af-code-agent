@@ -51,6 +51,7 @@ func (s *Server) SetupRoutes() {
 		s.container.Agent,
 		s.container.EnvConfig.GitHubWebhookSecret,
 		s.container.GitHubClient,
+		s.container.Config,
 	)
 
 	// Create AgentField handler

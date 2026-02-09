@@ -75,9 +75,9 @@ func (b *Bootstrap) CreateAgent(envCfg *config.EnvironmentConfig, aiConfig *ai.C
 	return app, nil
 }
 
-// CreateGitHubClient creates the GitHub client
-func (b *Bootstrap) CreateGitHubClient(token string) (*github.Client, error) {
-	ghClient, err := github.NewClient(token)
+// CreateGitHubClient creates the GitHub client with App authentication
+func (b *Bootstrap) CreateGitHubClient(appID, privateKey string) (*github.Client, error) {
+	ghClient, err := github.NewClientWithAppCredentials(appID, privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GitHub client: %w", err)
 	}
@@ -112,7 +112,7 @@ func (b *Bootstrap) Initialize() (*Container, error) {
 	}
 
 	// Create GitHub client
-	ghClient, err := b.CreateGitHubClient(envCfg.GitHubToken)
+	ghClient, err := b.CreateGitHubClient(envCfg.GitHubAppID, envCfg.GitHubPrivateKey)
 	if err != nil {
 		return nil, err
 	}

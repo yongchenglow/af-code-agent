@@ -12,6 +12,7 @@ import (
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/yourorg/github-code-agent/features/analyzer"
+	"github.com/yourorg/github-code-agent/pkg/config"
 	ghpkg "github.com/yourorg/github-code-agent/pkg/github"
 )
 
@@ -38,7 +39,8 @@ func TestWebhookSignatureValidation(t *testing.T) {
 
 	// Create webhook server
 	webhookSecret := "test-secret-123"
-	server := NewServer(app, webhookSecret, ghClient)
+	cfg := config.DefaultConfig()
+	server := NewServer(app, webhookSecret, ghClient, cfg)
 
 	tests := []struct {
 		name           string

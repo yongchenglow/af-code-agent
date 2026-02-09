@@ -4,6 +4,7 @@ go 1.24.13
 
 require (
 	github.com/Agent-Field/agentfield/sdk/go v0.0.0-20260204150328-2cd0fa9ed4de
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-github/v57 v57.0.0
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/oauth2 v0.34.0

@@ -262,7 +262,7 @@ github-code-agent/
 ### Prerequisites
 
 - Go 1.24 or higher
-- GitHub Personal Access Token or GitHub App credentials
+- GitHub App credentials (App ID and Private Key)
 - AI API key (DeepSeek via OpenRouter, or any OpenAI-compatible API)
 - AgentField instance (cloud or self-hosted)
 - Git installed (for git operations)
@@ -295,42 +295,49 @@ cp .env.example .env
 ```bash
 # AgentField Configuration
 AGENTFIELD_URL=https://your-agentfield-instance.com
-AGENTFIELD_API_KEY=your-agentfield-api-key
 
-# GitHub Configuration
-GITHUB_TOKEN=ghp_your_github_personal_access_token
+# GitHub App Configuration
+GITHUB_APP_ID=123456
+GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nYour_Private_Key_Here\n-----END RSA PRIVATE KEY-----"
+GITHUB_WEBHOOK_SECRET=your-webhook-secret
 
 # AI Configuration (DeepSeek via OpenRouter - Recommended)
 OPENAI_API_KEY=sk-or-v1-your-openrouter-api-key
-OPENAI_BASE_URL=https://openrouter.ai/api/v1
-AI_MODEL=deepseek/deepseek-chat
+AI_BASE_URL=https://api.deepseek.com
+AI_MODEL=deepseek-chat
 
 # Application Settings
 PORT=8001
 LOG_LEVEL=info
 ```
 
+**Note**: For detailed GitHub App setup instructions, see [GITHUB_APP_SETUP.md](GITHUB_APP_SETUP.md).
+
 1. **Configure agent behavior in `.github/code-agent.yml`**
 
 See [Configuration](#configuration) section for details.
 
-### GitHub Token Setup
+### GitHub App Setup
 
-**For Personal Access Token:**
+This agent uses GitHub App authentication for enhanced security and better rate limits. To set up:
 
-Create a GitHub Personal Access Token with the following scopes:
+1. Create a GitHub App at: https://github.com/settings/apps/new
 
-- `repo` - Full control of private repositories
-- `read:org` - Read org and team membership
-- `write:discussion` - Read and write team discussions
+2. Configure the following permissions:
+   - **Contents**: Read & Write
+   - **Pull requests**: Read & Write
+   - **Checks**: Read & Write
+   - **Commit statuses**: Read & Write
 
-**For GitHub App:**
+3. Subscribe to webhook events:
+   - Pull request
+   - Check suite
 
-Alternatively, you can use a GitHub App with:
+4. Generate and download the private key
 
-- **Pull requests**: Read & Write
-- **Contents**: Write
-- **Metadata**: Read
+5. Configure environment variables with your App ID and private key
+
+For detailed setup instructions, see [GITHUB_APP_SETUP.md](GITHUB_APP_SETUP.md).
 
 ### AgentField Setup
 

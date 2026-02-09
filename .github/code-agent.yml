@@ -4,6 +4,15 @@
 agent:
   enabled: true
   mode: safe # Options: yolo, safe
+  # Repository filtering (optional)
+  # Leave empty or omit to process all repositories the app has access to
+  allowed_repositories: []
+    # - owner/repo1
+    # - owner/repo2
+  # Or use patterns:
+  # allowed_patterns: []
+    # - "myorg/*"        # All repos in myorg
+    # - "*/backend-*"    # All repos starting with backend-
 
 # Webhook triggers
 webhooks:

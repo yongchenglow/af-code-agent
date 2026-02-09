@@ -93,14 +93,24 @@ func TestEnvironmentConfigValidation(t *testing.T) {
 		{
 			name: "valid config",
 			config: &EnvironmentConfig{
-				GitHubToken:         "ghp_test_token",
+				GitHubAppID:         "123456",
+				GitHubPrivateKey:    "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----",
 				GitHubWebhookSecret: "secret",
 			},
 			wantErr: false,
 		},
 		{
-			name: "missing token",
+			name: "missing app id",
 			config: &EnvironmentConfig{
+				GitHubPrivateKey:    "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----",
+				GitHubWebhookSecret: "secret",
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing private key",
+			config: &EnvironmentConfig{
+				GitHubAppID:         "123456",
 				GitHubWebhookSecret: "secret",
 			},
 			wantErr: true,
@@ -108,7 +118,8 @@ func TestEnvironmentConfigValidation(t *testing.T) {
 		{
 			name: "missing webhook secret",
 			config: &EnvironmentConfig{
-				GitHubToken: "ghp_test_token",
+				GitHubAppID:      "123456",
+				GitHubPrivateKey: "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----",
 			},
 			wantErr: true,
 		},
@@ -143,14 +154,16 @@ func TestGetTimeout(t *testing.T) {
 
 func TestLoadEnvironmentConfig(t *testing.T) {
 	// Set test environment variables
-	_ = os.Setenv("GITHUB_TOKEN", "ghp_test_token")
+	_ = os.Setenv("GITHUB_APP_ID", "123456")
+	_ = os.Setenv("GITHUB_PRIVATE_KEY", "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----")
 	_ = os.Setenv("GITHUB_WEBHOOK_SECRET", "test-secret")
 	_ = os.Setenv("OPENAI_API_KEY", "test-api-key")
 	_ = os.Setenv("AI_TEMPERATURE", "0.5")
 	_ = os.Setenv("AI_MAX_TOKENS", "2000")
 
 	defer func() {
-		_ = os.Unsetenv("GITHUB_TOKEN")
+		_ = os.Unsetenv("GITHUB_APP_ID")
+		_ = os.Unsetenv("GITHUB_PRIVATE_KEY")
 		_ = os.Unsetenv("GITHUB_WEBHOOK_SECRET")
 		_ = os.Unsetenv("OPENAI_API_KEY")
 		_ = os.Unsetenv("AI_TEMPERATURE")
@@ -162,8 +175,12 @@ func TestLoadEnvironmentConfig(t *testing.T) {
 		t.Fatalf("LoadEnvironmentConfig() error = %v", err)
 	}
 
-	if cfg.GitHubToken != "ghp_test_token" {
-		t.Errorf("Expected GitHubToken 'ghp_test_token', got %q", cfg.GitHubToken)
+	if cfg.GitHubAppID != "123456" {
+		t.Errorf("Expected GitHubAppID '123456', got %q", cfg.GitHubAppID)
+	}
+
+	if cfg.GitHubPrivateKey == "" {
+		t.Error("Expected GitHubPrivateKey to be set")
 	}
 
 	if cfg.AITemperature != 0.5 {
