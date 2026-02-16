@@ -59,18 +59,27 @@ func AnalyzePRReasoner(ctx context.Context, input map[string]any) (any, error) {
 		return nil, fmt.Errorf("failed to fetch PR files: %w", err)
 	}
 
-	files, ok := filesResult.(map[string]any)["files"].([]any)
+	filesData, ok := filesResult.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid files result")
 	}
 
-	log.Printf("Fetched %d files from PR #%d", len(files), prNumber)
+	files, ok := filesData["files"].([]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid files result")
+	}
+
+	// Extract commit SHA for review deduplication
+	commitSHA, _ := filesData["commit_sha"].(string)
+
+	log.Printf("Fetched %d files from PR #%d (commit: %s)", len(files), prNumber, commitSHA)
 
 	// Store results in workflow memory
 	memKey := fmt.Sprintf("pr-%d-analysis", prNumber)
 	analysisData := map[string]any{
 		"repo":        repo,
 		"pr_number":   prNumber,
+		"commit_sha":  commitSHA,
 		"files_count": len(files),
 		"files":       files,
 	}
@@ -83,6 +92,7 @@ func AnalyzePRReasoner(ctx context.Context, input map[string]any) (any, error) {
 		"success":     true,
 		"repo":        repo,
 		"pr_number":   prNumber,
+		"commit_sha":  commitSHA,
 		"files_count": len(files),
 		"files":       files,
 	}, nil
@@ -255,10 +265,14 @@ func FetchPRFilesReasoner(ctx context.Context, input map[string]any) (any, error
 
 	log.Printf("Successfully fetched %d files from PR #%d", len(files), prNumber)
 
+	// Get commit SHA for deduplication
+	commitSHA := pr.GetHead().GetSHA()
+
 	return map[string]any{
-		"repo":      repo,
-		"pr_number": prNumber,
-		"files":     files,
+		"repo":       repo,
+		"pr_number":  prNumber,
+		"commit_sha": commitSHA,
+		"files":      files,
 	}, nil
 }
 

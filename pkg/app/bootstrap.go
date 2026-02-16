@@ -62,12 +62,27 @@ func (b *Bootstrap) CreateAIConfig() *ai.Config {
 
 // CreateAgent creates the AgentField agent
 func (b *Bootstrap) CreateAgent(envCfg *config.EnvironmentConfig, aiConfig *ai.Config) (*agent.Agent, error) {
+	// Create persistent memory backend if AgentField URL is configured
+	var memoryBackend agent.MemoryBackend
+	if envCfg.AgentFieldURL != "" && envCfg.AgentFieldToken != "" {
+		log.Printf("Using AgentField control plane memory backend at %s", envCfg.AgentFieldURL)
+		memoryBackend = agent.NewControlPlaneMemoryBackend(
+			envCfg.AgentFieldURL,
+			envCfg.AgentFieldToken,
+			constants.AgentNodeID,
+		)
+	} else {
+		log.Println("Using in-memory backend (data will not persist across restarts)")
+		log.Println("To enable persistent memory, set AGENTFIELD_URL and AGENTFIELD_TOKEN")
+	}
+
 	app, err := agent.New(agent.Config{
 		NodeID:        constants.AgentNodeID,
 		Version:       constants.AgentVersion,
 		TeamID:        constants.AgentTeamID,
 		AgentFieldURL: envCfg.AgentFieldURL,
 		AIConfig:      aiConfig,
+		MemoryBackend: memoryBackend,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create agent: %w", err)

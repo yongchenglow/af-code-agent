@@ -134,7 +134,7 @@ func HandlePREvent(ctx context.Context, input map[string]any) (any, error) {
 
 	log.Printf("PR analysis completed: %v", analysisResult)
 
-	// Extract files from analysis result
+	// Extract files and commit SHA from analysis result
 	analysisData, ok := analysisResult.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid analysis result format")
@@ -148,6 +148,12 @@ func HandlePREvent(ctx context.Context, input map[string]any) (any, error) {
 			"message": fmt.Sprintf("PR #%d has no files to review", int(prNumber)),
 			"result":  analysisResult,
 		}, nil
+	}
+
+	// Extract commit SHA for deduplication
+	commitSHA, _ := analysisData["commit_sha"].(string)
+	if commitSHA == "" {
+		log.Printf("Warning: No commit SHA in analysis result for PR #%d", int(prNumber))
 	}
 
 	// Call review_code reasoner to review the files
@@ -263,13 +269,14 @@ func HandlePREvent(ctx context.Context, input map[string]any) (any, error) {
 
 	// Post review comments and apply fixes using the gitops workflow
 	workflowInput := map[string]any{
-		"owner":     owner,
-		"repo":      repoName,
-		"repo_path": "/tmp/" + repoName, // Temporary path for git operations
-		"pr_number": int(prNumber),
-		"mode":      mode,
-		"issues":    issues,
-		"patches":   patches,
+		"owner":      owner,
+		"repo":       repoName,
+		"repo_path":  "/tmp/" + repoName, // Temporary path for git operations
+		"pr_number":  int(prNumber),
+		"commit_sha": commitSHA,
+		"mode":       mode,
+		"issues":     issues,
+		"patches":    patches,
 	}
 
 	workflowResult, err := agentInstance.CallLocal(ctx, "post_review_with_fixes", workflowInput)

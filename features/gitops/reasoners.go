@@ -204,11 +204,17 @@ func postReviewWithFixesReasoner(ctx context.Context, gitops *GitOps, input map[
 	repo := getString(input, "repo")
 	repoPath := getString(input, "repo_path")
 	prNumber := getInt(input, "pr_number")
+	commitSHA := getString(input, "commit_sha")
 	modeStr := getString(input, "mode")
 
 	mode := SafeMode
 	if modeStr == "yolo" {
 		mode = YOLOMode
+	}
+
+	// Validate required commit SHA for deduplication
+	if commitSHA == "" {
+		return nil, fmt.Errorf("commit_sha is required for review tracking")
 	}
 
 	// Convert issues
@@ -261,8 +267,8 @@ func postReviewWithFixesReasoner(ctx context.Context, gitops *GitOps, input map[
 		ghClient = gitops.ghClient
 	}
 
-	// Execute workflow
-	result, err := PostReviewWithFixes(ctx, ghClient, owner, repo, repoPath, prNumber, issues, patches, mode)
+	// Execute workflow with agent instance and commit SHA for deduplication
+	result, err := PostReviewWithFixes(ctx, gitops.agent, ghClient, owner, repo, repoPath, prNumber, commitSHA, issues, patches, mode)
 	if err != nil {
 		return nil, err
 	}

@@ -108,6 +108,7 @@ type NotificationConfig struct {
 // EnvironmentConfig holds environment-based configuration
 type EnvironmentConfig struct {
 	AgentFieldURL       string
+	AgentFieldToken     string
 	GitHubAppID         string
 	GitHubPrivateKey    string
 	GitHubWebhookSecret string

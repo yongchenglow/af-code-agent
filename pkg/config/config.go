@@ -120,6 +120,7 @@ func LoadEnvironmentConfig() (*EnvironmentConfig, error) {
 
 	return &EnvironmentConfig{
 		AgentFieldURL:       getEnvOrDefault("AGENTFIELD_URL", "http://localhost:8080"),
+		AgentFieldToken:     os.Getenv("AGENTFIELD_TOKEN"),
 		GitHubAppID:         os.Getenv("GITHUB_APP_ID"),
 		GitHubPrivateKey:    os.Getenv("GITHUB_PRIVATE_KEY"),
 		GitHubWebhookSecret: os.Getenv("GITHUB_WEBHOOK_SECRET"),

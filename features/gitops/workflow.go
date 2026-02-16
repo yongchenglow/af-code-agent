@@ -3,18 +3,80 @@ package gitops
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
+	"time"
 
+	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/yourorg/github-code-agent/features/fixer"
 	"github.com/yourorg/github-code-agent/features/reviewer"
 )
 
+// ReviewHistory tracks previous reviews for deduplication
+type ReviewHistory struct {
+	PRNumber   int               `json:"pr_number"`
+	CommitSHA  string            `json:"commit_sha"`
+	IssueIDs   []string          `json:"issue_ids"`
+	ReviewedAt string            `json:"reviewed_at"`
+	CommentIDs map[string]int64  `json:"comment_ids"` // issueID -> commentID
+}
+
+// saveReviewHistory persists review data to prevent duplicate comments
+func saveReviewHistory(
+	ctx context.Context,
+	agentInstance *agent.Agent,
+	repo string,
+	prNumber int,
+	commitSHA string,
+	issues []*reviewer.Issue,
+	commentIDs map[string]int64,
+) error {
+	issueIDs := make([]string, 0, len(issues))
+	for _, issue := range issues {
+		issueIDs = append(issueIDs, issue.ID)
+	}
+
+	history := ReviewHistory{
+		PRNumber:   prNumber,
+		CommitSHA:  commitSHA,
+		IssueIDs:   issueIDs,
+		ReviewedAt: time.Now().Format(time.RFC3339),
+		CommentIDs: commentIDs,
+	}
+
+	// Use GlobalScope for persistence across webhook events
+	memKey := fmt.Sprintf("review-history:%s:pr-%d", repo, prNumber)
+	return agentInstance.Memory().GlobalScope().Set(ctx, memKey, history)
+}
+
+// getReviewHistory retrieves previous review data for deduplication
+func getReviewHistory(
+	ctx context.Context,
+	agentInstance *agent.Agent,
+	repo string,
+	prNumber int,
+) (*ReviewHistory, error) {
+	memKey := fmt.Sprintf("review-history:%s:pr-%d", repo, prNumber)
+
+	var history ReviewHistory
+	err := agentInstance.Memory().GlobalScope().GetTyped(ctx, memKey, &history)
+	if err != nil {
+		return nil, err
+	}
+	if history.CommitSHA == "" {
+		return nil, nil // No previous review
+	}
+	return &history, nil
+}
+
 // PostReviewWithFixes orchestrates the complete review + fix workflow
 func PostReviewWithFixes(
 	ctx context.Context,
+	agentInstance *agent.Agent,
 	ghClient *GitHubClient,
 	owner, repo, repoPath string,
 	prNumber int,
+	currentCommitSHA string,
 	issues []*reviewer.Issue,
 	patches []*fixer.CodePatch,
 	mode OperationMode,
@@ -26,6 +88,62 @@ func PostReviewWithFixes(
 		IssuesReviewed: len(issues),
 		FixesApplied:   len(patches),
 	}
+
+	// Check previous review history for deduplication
+	repoFullName := fmt.Sprintf("%s/%s", owner, repo)
+	prevReview, err := getReviewHistory(ctx, agentInstance, repoFullName, prNumber)
+	if err != nil {
+		log.Printf("Warning: Failed to get review history: %v", err)
+	}
+
+	// Skip if commit hasn't changed since last review
+	if prevReview != nil && prevReview.CommitSHA == currentCommitSHA {
+		log.Printf("PR #%d: No new commits since last review (SHA: %s), skipping", prNumber, currentCommitSHA)
+		result.Success = true
+		result.IssuesReviewed = 0
+		result.CommentsPosted = 0
+		return result, nil
+	}
+
+	// Filter out duplicate issues from previous review
+	var filteredIssues []*reviewer.Issue
+	if prevReview != nil {
+		prevIssueSet := make(map[string]bool)
+		for _, issueID := range prevReview.IssueIDs {
+			prevIssueSet[issueID] = true
+		}
+
+		for _, issue := range issues {
+			if !prevIssueSet[issue.ID] {
+				filteredIssues = append(filteredIssues, issue)
+			}
+		}
+
+		duplicateCount := len(issues) - len(filteredIssues)
+		if duplicateCount > 0 {
+			log.Printf("PR #%d: Filtered %d duplicate issues, %d new issues to post",
+				prNumber, duplicateCount, len(filteredIssues))
+		}
+
+		if len(filteredIssues) == 0 {
+			log.Printf("PR #%d: No new issues found (commit SHA: %s)", prNumber, currentCommitSHA)
+			// Save that we reviewed this commit even with no new issues
+			if err := saveReviewHistory(ctx, agentInstance, repoFullName, prNumber, currentCommitSHA, issues, prevReview.CommentIDs); err != nil {
+				log.Printf("Warning: Failed to save review history: %v", err)
+			}
+			result.Success = true
+			result.IssuesReviewed = 0
+			result.CommentsPosted = 0
+			return result, nil
+		}
+	} else {
+		// First review - post all issues
+		filteredIssues = issues
+		log.Printf("PR #%d: First review, posting all %d issues", prNumber, len(issues))
+	}
+
+	// Update result counts to reflect filtered issues
+	result.IssuesReviewed = len(filteredIssues)
 
 	// Clone the repository if we have patches to apply
 	var actualRepoPath string
@@ -57,10 +175,17 @@ func PostReviewWithFixes(
 		fmt.Printf("DEBUG: No patches to apply, skipping repository operations\n")
 	}
 
-	// Step 1: Post initial review comments for all issues
+	// Step 1: Post initial review comments for filtered issues
 	commentIDs := make(map[string]int64) // issueID -> commentID
 
-	for _, issue := range issues {
+	// Merge with previous comment IDs if they exist
+	if prevReview != nil && prevReview.CommentIDs != nil {
+		for issueID, commentID := range prevReview.CommentIDs {
+			commentIDs[issueID] = commentID
+		}
+	}
+
+	for _, issue := range filteredIssues {
 		comment := &ReviewComment{
 			FilePath: issue.FilePath,
 			Line:     issue.Line,
@@ -78,6 +203,12 @@ func PostReviewWithFixes(
 
 		commentIDs[issue.ID] = commentID
 		result.CommentsPosted++
+	}
+
+	// Save review history after posting comments
+	allIssues := issues // Store all issues (including filtered ones) for history
+	if err := saveReviewHistory(ctx, agentInstance, repoFullName, prNumber, currentCommitSHA, allIssues, commentIDs); err != nil {
+		log.Printf("Warning: Failed to save review history: %v", err)
 	}
 
 	// If no patches to apply, we're done
@@ -115,7 +246,7 @@ func PostReviewWithFixes(
 		}
 
 		// Post summary comment
-		summaryBody := GenerateSummaryComment(len(issues), 0, "", YOLOMode)
+		summaryBody := GenerateSummaryComment(len(filteredIssues), 0, "", YOLOMode)
 		if err := ghClient.AddIssueComment(ctx, owner, repo, prNumber, summaryBody); err != nil {
 			fmt.Printf("Warning: failed to post summary comment: %v\n", err)
 		}
@@ -155,7 +286,7 @@ func PostReviewWithFixes(
 		}
 
 		// Post summary comment on original PR
-		summaryBody := GenerateSummaryComment(len(issues), fixPR.Number, fixPR.HTMLURL, SafeMode)
+		summaryBody := GenerateSummaryComment(len(filteredIssues), fixPR.Number, fixPR.HTMLURL, SafeMode)
 		if err := ghClient.AddIssueComment(ctx, owner, repo, prNumber, summaryBody); err != nil {
 			fmt.Printf("Warning: failed to post summary comment: %v\n", err)
 		}
