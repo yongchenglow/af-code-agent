@@ -1,0 +1,386 @@
+package gitops
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/Agent-Field/agentfield/sdk/go/agent"
+	"github.com/google/go-github/v57/github"
+	"github.com/yourorg/github-code-agent/features/fixer"
+	"github.com/yourorg/github-code-agent/features/reviewer"
+)
+
+// GitOps handles git operations with GitHub integration
+type GitOps struct {
+	agent    *agent.Agent
+	ghClient *GitHubClient
+}
+
+// NewGitOps creates a new GitOps instance
+func NewGitOps(app *agent.Agent, ghClient *github.Client) *GitOps {
+	return &GitOps{
+		agent:    app,
+		ghClient: NewGitHubClient(ghClient),
+	}
+}
+
+// RegisterSkills registers all gitops reasoners with the agent
+func RegisterSkills(app *agent.Agent, ghClient *github.Client) {
+	gitops := NewGitOps(app, ghClient)
+
+	app.RegisterReasoner("create_branch",
+		func(ctx context.Context, input map[string]any) (any, error) {
+			return createBranchSkill(ctx, gitops, input)
+		},
+		agent.WithDescription("[SKILL] Creates a new Git branch"))
+
+	app.RegisterReasoner("apply_patches",
+		func(ctx context.Context, input map[string]any) (any, error) {
+			return applyPatchesSkill(ctx, gitops, input)
+		},
+		agent.WithDescription("[SKILL] Applies code patches and creates commits"))
+
+	app.RegisterReasoner("create_pull_request",
+		func(ctx context.Context, input map[string]any) (any, error) {
+			return createPullRequestSkill(ctx, gitops, input)
+		},
+		agent.WithDescription("[SKILL] Creates a GitHub pull request"))
+
+	app.RegisterReasoner("add_review_comment",
+		func(ctx context.Context, input map[string]any) (any, error) {
+			return addReviewCommentSkill(ctx, gitops, input)
+		},
+		agent.WithDescription("[SKILL] Adds a code review comment to a PR"))
+
+	app.RegisterReasoner("update_review_comment",
+		func(ctx context.Context, input map[string]any) (any, error) {
+			return updateReviewCommentSkill(ctx, gitops, input)
+		},
+		agent.WithDescription("[SKILL] Updates an existing review comment"))
+
+	app.RegisterReasoner("post_review_with_fixes",
+		func(ctx context.Context, input map[string]any) (any, error) {
+			return postReviewWithFixesSkill(ctx, gitops, input)
+		},
+		agent.WithDescription("[SKILL] Orchestrates posting review comments and applying fixes"))
+
+	app.RegisterReasoner("check_pr_exists",
+		func(ctx context.Context, input map[string]any) (any, error) {
+			return checkPRExistsSkill(ctx, gitops, input)
+		},
+		agent.WithDescription("[SKILL] Checks if a PR exists for a given branch"))
+}
+
+// createBranchSkill creates a new Git branch
+func createBranchSkill(ctx context.Context, gitops *GitOps, input map[string]any) (any, error) {
+	repoPath := getString(input, "repo_path")
+	baseBranch := getString(input, "base_branch")
+	newBranch := getString(input, "new_branch")
+
+	if repoPath == "" || baseBranch == "" || newBranch == "" {
+		return nil, fmt.Errorf("missing required parameters")
+	}
+
+	branch, err := CreateBranch(ctx, repoPath, baseBranch, newBranch)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"branch_name": branch.Name,
+		"sha":         branch.SHA,
+	}, nil
+}
+
+// applyPatchesSkill applies patches and commits
+func applyPatchesSkill(ctx context.Context, gitops *GitOps, input map[string]any) (any, error) {
+	repoPath := getString(input, "repo_path")
+	commitMessage := getString(input, "commit_message")
+
+	patchesData, ok := input["patches"].([]any)
+	if !ok {
+		return nil, fmt.Errorf("patches must be a list")
+	}
+
+	// Convert to CodePatch array
+	patches := make([]*fixer.CodePatch, 0, len(patchesData))
+	for _, p := range patchesData {
+		patchMap := p.(map[string]any)
+		patch := &fixer.CodePatch{
+			IssueID:      getString(patchMap, "issue_id"),
+			FilePath:     getString(patchMap, "file_path"),
+			Language:     getString(patchMap, "language"),
+			OriginalCode: getString(patchMap, "original_code"),
+			FixedCode:    getString(patchMap, "fixed_code"),
+			Description:  getString(patchMap, "description"),
+			Line:         getInt(patchMap, "line"),
+		}
+		patches = append(patches, patch)
+	}
+
+	result, err := ApplyPatches(ctx, repoPath, patches, commitMessage)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"success":       result.Success,
+		"commit":        result.Commit,
+		"applications":  result.Applications,
+		"success_count": result.SuccessCount,
+		"failure_count": result.FailureCount,
+	}, nil
+}
+
+// createPullRequestSkill creates a PR
+func createPullRequestSkill(ctx context.Context, gitops *GitOps, input map[string]any) (any, error) {
+	owner := getString(input, "owner")
+	repo := getString(input, "repo")
+	title := getString(input, "title")
+	body := getString(input, "body")
+	headBranch := getString(input, "head_branch")
+	baseBranch := getString(input, "base_branch")
+
+	pr, err := gitops.ghClient.CreatePullRequest(ctx, owner, repo, title, body, headBranch, baseBranch)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"number":      pr.Number,
+		"title":       pr.Title,
+		"url":         pr.URL,
+		"html_url":    pr.HTMLURL,
+		"head_branch": pr.HeadBranch,
+		"base_branch": pr.BaseBranch,
+	}, nil
+}
+
+// addReviewCommentSkill adds a review comment
+func addReviewCommentSkill(ctx context.Context, gitops *GitOps, input map[string]any) (any, error) {
+	owner := getString(input, "owner")
+	repo := getString(input, "repo")
+	prNumber := getInt(input, "pr_number")
+
+	commentData := input["comment"].(map[string]any)
+	comment := &ReviewComment{
+		FilePath: getString(commentData, "file_path"),
+		Line:     getInt(commentData, "line"),
+		Body:     getString(commentData, "body"),
+		IssueID:  getString(commentData, "issue_id"),
+		Severity: getString(commentData, "severity"),
+	}
+
+	commentID, err := gitops.ghClient.AddReviewComment(ctx, owner, repo, prNumber, comment)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"comment_id": commentID,
+	}, nil
+}
+
+// updateReviewCommentSkill updates a review comment
+func updateReviewCommentSkill(ctx context.Context, gitops *GitOps, input map[string]any) (any, error) {
+	owner := getString(input, "owner")
+	repo := getString(input, "repo")
+	commentID := getInt64(input, "comment_id")
+	fixLink := getString(input, "fix_link")
+
+	err := gitops.ghClient.UpdateReviewComment(ctx, owner, repo, commentID, fixLink)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"success": true,
+	}, nil
+}
+
+// postReviewWithFixesSkill orchestrates the complete workflow
+func postReviewWithFixesSkill(ctx context.Context, gitops *GitOps, input map[string]any) (any, error) {
+	owner := getString(input, "owner")
+	repo := getString(input, "repo")
+	repoPath := getString(input, "repo_path")
+	prNumber := getInt(input, "pr_number")
+	commitSHA := getString(input, "commit_sha")
+	modeStr := getString(input, "mode")
+
+	mode := SafeMode
+	if modeStr == "yolo" {
+		mode = YOLOMode
+	}
+
+	// Validate required commit SHA for deduplication
+	if commitSHA == "" {
+		return nil, fmt.Errorf("commit_sha is required for review tracking")
+	}
+
+	// Convert issues
+	issuesData, ok := input["issues"].([]any)
+	if !ok {
+		return nil, fmt.Errorf("issues must be a list")
+	}
+
+	issues := make([]*reviewer.Issue, 0, len(issuesData))
+	for _, i := range issuesData {
+		issueMap := i.(map[string]any)
+		issue := &reviewer.Issue{
+			ID:          getString(issueMap, "id"),
+			FilePath:    getString(issueMap, "file_path"),
+			Line:        getInt(issueMap, "line"),
+			Severity:    getString(issueMap, "severity"),
+			Category:    getString(issueMap, "category"),
+			Title:       getString(issueMap, "title"),
+			Description: getString(issueMap, "description"),
+			Suggestion:  getString(issueMap, "suggestion"),
+		}
+		issues = append(issues, issue)
+	}
+
+	// Convert patches
+	patchesData, ok := input["patches"].([]any)
+	if !ok {
+		return nil, fmt.Errorf("patches must be a list")
+	}
+
+	patches := make([]*fixer.CodePatch, 0, len(patchesData))
+	for _, p := range patchesData {
+		patchMap := p.(map[string]any)
+		patch := &fixer.CodePatch{
+			IssueID:      getString(patchMap, "issue_id"),
+			FilePath:     getString(patchMap, "file_path"),
+			Language:     getString(patchMap, "language"),
+			OriginalCode: getString(patchMap, "original_code"),
+			FixedCode:    getString(patchMap, "fixed_code"),
+			Description:  getString(patchMap, "description"),
+			Line:         getInt(patchMap, "line"),
+		}
+		patches = append(patches, patch)
+	}
+
+	// Get GitHub client from context (authenticated for this specific repo)
+	ghClient := getGitHubClientFromContext(ctx)
+	if ghClient == nil {
+		// Fallback to default client
+		ghClient = gitops.ghClient
+	}
+
+	// Execute workflow with agent instance and commit SHA for deduplication
+	result, err := PostReviewWithFixes(ctx, gitops.agent, ghClient, owner, repo, repoPath, prNumber, commitSHA, issues, patches, mode)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"mode":             string(result.Mode),
+		"success":          result.Success,
+		"issues_reviewed":  result.IssuesReviewed,
+		"fixes_applied":    result.FixesApplied,
+		"commit_sha":       result.CommitSHA,
+		"fix_pr":           result.FixPR,
+		"fix_pr_url":       result.FixPRURL,
+		"comments_posted":  result.CommentsPosted,
+		"comments_updated": result.CommentsUpdated,
+		"error":            result.Error,
+	}, nil
+}
+
+// checkPRExistsSkill checks if a PR exists for a given branch
+func checkPRExistsSkill(ctx context.Context, gitops *GitOps, input map[string]any) (any, error) {
+	repo := getString(input, "repo")
+	branch := getString(input, "branch")
+
+	if repo == "" || branch == "" {
+		return nil, fmt.Errorf("repo and branch are required")
+	}
+
+	// Parse owner/repo
+	owner, repoName, err := parseRepo(repo)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check for existing PRs from this branch
+	pr, exists, err := gitops.ghClient.FindPRByBranch(ctx, owner, repoName, branch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for existing PR: %w", err)
+	}
+
+	if !exists {
+		return map[string]any{
+			"exists": false,
+		}, nil
+	}
+
+	return map[string]any{
+		"exists":    true,
+		"pr_number": pr.Number,
+		"pr_url":    pr.HTMLURL,
+		"title":     pr.Title,
+	}, nil
+}
+
+// Helper functions
+
+// getGitHubClientFromContext retrieves the authenticated GitHub client from context
+func getGitHubClientFromContext(ctx context.Context) *GitHubClient {
+	// Try to get wrapped client first (from webhook service)
+	if wrappedClient, ok := ctx.Value("github_client").(interface{ GetClient() *github.Client }); ok {
+		return NewGitHubClient(wrappedClient.GetClient())
+	}
+	// Fallback to direct github.Client
+	if client, ok := ctx.Value("github_client").(*github.Client); ok {
+		return NewGitHubClient(client)
+	}
+	return nil
+}
+
+func getString(m map[string]any, key string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func getInt(m map[string]any, key string) int {
+	if v, ok := m[key].(int); ok {
+		return v
+	}
+	if v, ok := m[key].(float64); ok {
+		return int(v)
+	}
+	return 0
+}
+
+func getInt64(m map[string]any, key string) int64 {
+	if v, ok := m[key].(int64); ok {
+		return v
+	}
+	if v, ok := m[key].(float64); ok {
+		return int64(v)
+	}
+	return 0
+}
+
+func parseRepo(fullRepo string) (owner, repo string, err error) {
+	parts := splitString(fullRepo, "/")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid repo format, expected owner/repo, got %s", fullRepo)
+	}
+	return parts[0], parts[1], nil
+}
+
+func splitString(s, sep string) []string {
+	var result []string
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == sep[0] {
+			result = append(result, s[start:i])
+			start = i + 1
+		}
+	}
+	result = append(result, s[start:])
+	return result
+}

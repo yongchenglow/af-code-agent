@@ -28,20 +28,30 @@ func NewServer(container *Container) *Server {
 	}
 }
 
-// RegisterReasoners registers all feature reasoners
-func (s *Server) RegisterReasoners() {
-	log.Println("Registering reasoners...")
+// RegisterAgents registers all feature reasoners and skills
+func (s *Server) RegisterAgents() {
+	log.Println("Registering reasoners and skills...")
 
 	app := s.container.Agent
 	cfg := s.container.Config
 	ghClient := s.container.GitHubClient.GetClient()
 
+	// Register AI-powered reasoners
+	log.Println("  - Registering reasoners (AI-powered functions)...")
+	reviewer.RegisterReasoners(app)
+	fixer.RegisterReasoners(app)
 	webhook.RegisterReasoners(app)
 	analyzer.RegisterReasoners(app)
-	reviewer.RegisterReasoners(app)
 	standards.RegisterReasoners(app, cfg)
-	fixer.RegisterReasoners(app)
 	gitops.RegisterReasoners(app, ghClient)
+
+	// Register deterministic skills
+	log.Println("  - Registering skills (deterministic functions)...")
+	webhook.RegisterSkills(app)
+	analyzer.RegisterSkills(app)
+	fixer.RegisterSkills(app)
+	standards.RegisterSkills(app, cfg)
+	gitops.RegisterSkills(app, ghClient)
 }
 
 // SetupRoutes sets up HTTP routing
@@ -121,7 +131,7 @@ func Run() error {
 
 	// Create and setup server
 	srv := NewServer(container)
-	srv.RegisterReasoners()
+	srv.RegisterAgents()
 	srv.SetupRoutes()
 
 	// Start server

@@ -19,21 +19,18 @@ func NewFixer(app *agent.Agent) *Fixer {
 	}
 }
 
-// RegisterReasoners registers all fixer reasoners with the agent
+// RegisterReasoners registers all fixer reasoners (AI-powered functions) with the agent
 func RegisterReasoners(app *agent.Agent) {
 	fixer := NewFixer(app)
 
+	// generate_fixes_with_validation is AI-powered (uses LLM to generate fixes)
 	app.RegisterReasoner("generate_fixes_with_validation",
 		func(ctx context.Context, input map[string]any) (any, error) {
 			return generateFixesWithValidationReasoner(ctx, fixer, input)
 		},
-		agent.WithDescription("Generates and validates code fixes with retry loop"))
+		agent.WithDescription("[REASONER] Generates and validates code fixes with retry loop using AI"))
 
-	app.RegisterReasoner("validate_fix",
-		func(ctx context.Context, input map[string]any) (any, error) {
-			return validateFixReasoner(ctx, fixer, input)
-		},
-		agent.WithDescription("Validates a code fix against multiple criteria"))
+	// validate_fix has been moved to skills.go (deterministic validation logic)
 }
 
 // generateFixesWithValidationReasoner is the reasoner for generating fixes with validation
@@ -108,57 +105,4 @@ func generateFixesWithValidationReasoner(ctx context.Context, fixer *Fixer, inpu
 	}, nil
 }
 
-// validateFixReasoner is the reasoner for validating a single fix
-func validateFixReasoner(ctx context.Context, fixer *Fixer, input map[string]any) (any, error) {
-	// Extract patch
-	patchData, ok := input["patch"].(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("patch must be an object")
-	}
-
-	// Convert to CodePatch
-	patch := &CodePatch{
-		IssueID:      patchData["issue_id"].(string),
-		FilePath:     patchData["file_path"].(string),
-		Language:     patchData["language"].(string),
-		OriginalCode: patchData["original_code"].(string),
-		FixedCode:    patchData["fixed_code"].(string),
-		Description:  patchData["description"].(string),
-	}
-
-	if line, ok := patchData["line"].(float64); ok {
-		patch.Line = int(line)
-	}
-
-	// Get validation config
-	config := DefaultValidationConfig()
-	if configInput, ok := input["config"].(map[string]any); ok {
-		if enableSyntax, ok := configInput["enable_syntax_check"].(bool); ok {
-			config.EnableSyntaxCheck = enableSyntax
-		}
-		if enableLinting, ok := configInput["enable_linting"].(bool); ok {
-			config.EnableLinting = enableLinting
-		}
-		if enableFormatting, ok := configInput["enable_formatting"].(bool); ok {
-			config.EnableFormatting = enableFormatting
-		}
-		if enableSecurity, ok := configInput["enable_security_scan"].(bool); ok {
-			config.EnableSecurityScan = enableSecurity
-		}
-		if autoFormat, ok := configInput["auto_format"].(bool); ok {
-			config.AutoFormat = autoFormat
-		}
-	}
-
-	// Validate fix
-	result, err := ValidateFix(ctx, patch, config)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string]any{
-		"is_valid": result.IsValid,
-		"errors":   result.Errors,
-		"warnings": result.Warnings,
-	}, nil
-}
+// validateFixReasoner has been moved to skills.go as validateFixSkill

@@ -8,21 +8,23 @@ import (
 	"github.com/yourorg/github-code-agent/features/analyzer"
 )
 
-// RegisterReasoners registers all review reasoners
+// RegisterReasoners registers all review reasoners (AI-powered functions)
 func RegisterReasoners(app *agent.Agent) {
 	reviewer := NewReviewer(app)
 
+	// review_code is AI-powered (uses LLM for code analysis)
 	app.RegisterReasoner("review_code",
 		func(ctx context.Context, input map[string]any) (any, error) {
 			return reviewCodeReasoner(ctx, reviewer, input)
 		},
-		agent.WithDescription("Performs AI-powered code review"))
+		agent.WithDescription("[REASONER] Performs AI-powered code review"))
 
+	// detect_security_issues is AI-powered (uses LLM for security analysis)
 	app.RegisterReasoner("detect_security_issues",
 		func(ctx context.Context, input map[string]any) (any, error) {
 			return detectSecurityIssuesReasoner(ctx, reviewer, input)
 		},
-		agent.WithDescription("Detects security vulnerabilities in code"))
+		agent.WithDescription("[REASONER] Detects security vulnerabilities in code using AI"))
 }
 
 // reviewCodeReasoner is the reasoner function for code review
