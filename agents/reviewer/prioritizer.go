@@ -3,7 +3,7 @@ package reviewer
 import (
 	"sort"
 
-	"github.com/yourorg/github-code-agent/features/standards"
+	"github.com/yourorg/github-code-agent/agents/standards"
 )
 
 // PrioritizedIssues contains issues sorted by priority

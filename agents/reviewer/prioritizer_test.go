@@ -3,7 +3,7 @@ package reviewer
 import (
 	"testing"
 
-	"github.com/yourorg/github-code-agent/features/standards"
+	"github.com/yourorg/github-code-agent/agents/standards"
 )
 
 func TestPrioritizeIssues(t *testing.T) {

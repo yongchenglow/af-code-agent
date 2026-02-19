@@ -9,7 +9,7 @@ import (
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
-	"github.com/yourorg/github-code-agent/features/analyzer"
+	"github.com/yourorg/github-code-agent/agents/analyzer"
 	"github.com/yourorg/github-code-agent/pkg/constants"
 	"github.com/yourorg/github-code-agent/pkg/utils"
 )

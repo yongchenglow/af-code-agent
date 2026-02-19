@@ -5,12 +5,12 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/yourorg/github-code-agent/features/analyzer"
-	"github.com/yourorg/github-code-agent/features/fixer"
-	"github.com/yourorg/github-code-agent/features/gitops"
-	"github.com/yourorg/github-code-agent/features/reviewer"
-	"github.com/yourorg/github-code-agent/features/standards"
-	"github.com/yourorg/github-code-agent/features/webhook"
+	"github.com/yourorg/github-code-agent/agents/analyzer"
+	"github.com/yourorg/github-code-agent/agents/fixer"
+	"github.com/yourorg/github-code-agent/agents/gitops"
+	"github.com/yourorg/github-code-agent/agents/reviewer"
+	"github.com/yourorg/github-code-agent/agents/standards"
+	"github.com/yourorg/github-code-agent/agents/webhook"
 	"github.com/yourorg/github-code-agent/pkg/constants"
 	ctxpkg "github.com/yourorg/github-code-agent/pkg/context"
 )

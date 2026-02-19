@@ -10,6 +10,7 @@ const (
 	ReviewAIMaxTokens    = 4000
 	SecurityAIMaxTokens  = 3000
 	FixerAIMaxTokens     = 2000
+	TestAIMaxTokens      = 3000
 	DefaultAITimeout     = 10 * time.Minute
 	DefaultAIModel       = "deepseek-chat"
 )

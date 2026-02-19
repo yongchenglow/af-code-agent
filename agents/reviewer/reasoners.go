@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
-	"github.com/yourorg/github-code-agent/features/analyzer"
+	"github.com/yourorg/github-code-agent/agents/analyzer"
 )
 
 // RegisterReasoners registers all review reasoners (AI-powered functions)

@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/yourorg/github-code-agent/features/analyzer"
+	"github.com/yourorg/github-code-agent/agents/analyzer"
 	"github.com/yourorg/github-code-agent/pkg/config"
 )
 

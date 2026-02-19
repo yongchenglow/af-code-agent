@@ -67,23 +67,6 @@ func ShouldIgnoreFile(filename string, ignorePatterns []string) bool {
 	return false
 }
 
-// ExtractCodeSection extracts a section of code around a line number
-func ExtractCodeSection(content string, line, contextLines int) string {
-	lines := strings.Split(content, "\n")
-
-	start := line - contextLines - 1
-	if start < 0 {
-		start = 0
-	}
-
-	end := line + contextLines
-	if end > len(lines) {
-		end = len(lines)
-	}
-
-	return strings.Join(lines[start:end], "\n")
-}
-
 // TruncateContent truncates content to maxLength with truncation indicator
 func TruncateContent(content string, maxLength int) string {
 	if len(content) <= maxLength {

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/yourorg/github-code-agent/features/fixer"
+	"github.com/yourorg/github-code-agent/agents/fixer"
 )
 
 func TestGenerateCommitMessage(t *testing.T) {

@@ -3,7 +3,7 @@ package gitops
 import (
 	"context"
 
-	"github.com/yourorg/github-code-agent/features/fixer"
+	"github.com/yourorg/github-code-agent/agents/fixer"
 )
 
 var (

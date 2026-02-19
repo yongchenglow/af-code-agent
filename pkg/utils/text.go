@@ -104,3 +104,26 @@ func IsIdentifier(word string) bool {
 	}
 	return true
 }
+
+// ExtractCodeSection extracts a section of code around a specific line
+func ExtractCodeSection(content string, line int, contextLines int) string {
+	lines := strings.Split(content, "\n")
+	if line < 1 || line > len(lines) {
+		return content
+	}
+
+	// Calculate start and end indices
+	start := line - 1 - contextLines
+	end := line - 1 + contextLines
+
+	if start < 0 {
+		start = 0
+	}
+	if end >= len(lines) {
+		end = len(lines) - 1
+	}
+
+	// Extract and join the section
+	section := strings.Join(lines[start:end+1], "\n")
+	return section
+}

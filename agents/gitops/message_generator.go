@@ -3,7 +3,7 @@ package gitops
 import (
 	"fmt"
 
-	"github.com/yourorg/github-code-agent/features/fixer"
+	"github.com/yourorg/github-code-agent/agents/fixer"
 	"github.com/yourorg/github-code-agent/pkg/constants"
 )
 

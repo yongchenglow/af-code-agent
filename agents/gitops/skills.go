@@ -6,8 +6,8 @@ import (
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/google/go-github/v57/github"
-	"github.com/yourorg/github-code-agent/features/fixer"
-	"github.com/yourorg/github-code-agent/features/reviewer"
+	"github.com/yourorg/github-code-agent/agents/fixer"
+	"github.com/yourorg/github-code-agent/agents/reviewer"
 )
 
 // GitOps handles git operations with GitHub integration

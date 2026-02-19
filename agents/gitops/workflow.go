@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
-	"github.com/yourorg/github-code-agent/features/fixer"
-	"github.com/yourorg/github-code-agent/features/reviewer"
+	"github.com/yourorg/github-code-agent/agents/fixer"
+	"github.com/yourorg/github-code-agent/agents/reviewer"
 )
 
 // ReviewHistory tracks previous reviews for deduplication
