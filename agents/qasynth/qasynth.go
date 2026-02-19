@@ -2,6 +2,7 @@ package qasynth
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 
@@ -9,6 +10,12 @@ import (
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
 	"github.com/yourorg/github-code-agent/pkg/constants"
 )
+
+//go:embed prompts/system.md
+var qaSynthesisSystemPrompt string
+
+//go:embed prompts/task.md
+var qaSynthesisTaskPrompt string
 
 // QASynthesizer aggregates QA and review results into decisions
 type QASynthesizer struct {
@@ -60,7 +67,7 @@ type SynthesisDecision struct {
 
 // Synthesize aggregates results into a decision
 func (s *QASynthesizer) Synthesize(ctx context.Context, input *SynthesisInput) (*SynthesisDecision, error) {
-	prompt := s.buildSynthesisPrompt(input)
+	prompt := buildQASynthesisPrompt(input)
 
 	// Create context with timeout
 	aiCtx, cancel := context.WithTimeout(ctx, constants.DefaultAITimeout)
@@ -68,7 +75,7 @@ func (s *QASynthesizer) Synthesize(ctx context.Context, input *SynthesisInput) (
 
 	// Use AI for synthesis
 	response, err := s.agent.AI(aiCtx, prompt,
-		ai.WithSystem(s.buildSynthesisSystemPrompt()),
+		ai.WithSystem(qaSynthesisSystemPrompt),
 		ai.WithTemperature(constants.LowAITemperature),
 		ai.WithMaxTokens(1000))
 
@@ -85,75 +92,25 @@ func (s *QASynthesizer) Synthesize(ctx context.Context, input *SynthesisInput) (
 	return decision, nil
 }
 
-// buildSynthesisPrompt builds the synthesis prompt
-func (s *QASynthesizer) buildSynthesisPrompt(input *SynthesisInput) string {
-	b := &promptBuilder{}
-	b.WriteString("## QA Synthesis Task\n\n")
-	b.WriteString(fmt.Sprintf("**Issue**: %s\n", input.IssueID))
-	b.WriteString(fmt.Sprintf("**Description**: %s\n\n", input.Description))
-
-	b.WriteString("## Validation Results\n")
-	b.WriteString(fmt.Sprintf("- Syntax Valid: %v\n", input.SyntaxValid))
-	b.WriteString(fmt.Sprintf("- Linting Passed: %v\n", input.LintingPassed))
-	b.WriteString(fmt.Sprintf("- Tests Passed: %v\n\n", input.TestsPassed))
-
+// buildQASynthesisPrompt builds the synthesis prompt from template
+func buildQASynthesisPrompt(input *SynthesisInput) string {
+	iterationHistory := ""
 	if len(input.IterationHistory) > 0 {
-		b.WriteString("## Iteration History\n")
+		iterationHistory += "## Iteration History\n"
 		for i, iter := range input.IterationHistory {
-			b.WriteString(fmt.Sprintf("%d. **%s**: %s\n", i+1, iter.Action, iter.Summary))
+			iterationHistory += fmt.Sprintf("%d. **%s**: %s\n", i+1, iter.Action, iter.Summary)
 		}
-		b.WriteString("\n")
+		iterationHistory += "\n"
 	}
 
-	b.WriteString("## Decision Criteria\n\n")
-	b.WriteString("Make a decision based on:\n")
-	b.WriteString("1. **APPROVE** if all validations pass and the fix is complete\n")
-	b.WriteString("2. **FIX** if validations fail or the fix is incomplete\n")
-	b.WriteString("3. **BLOCK** if there are critical issues that cannot be fixed automatically\n\n")
-
-	b.WriteString("Output your decision as JSON:\n")
-	b.WriteString("```json\n")
-	b.WriteString("{\n")
-	b.WriteString("  \"action\": \"APPROVE|FIX|BLOCK\",\n")
-	b.WriteString("  \"summary\": \"...\",\n")
-	b.WriteString("  \"feedback\": [\"...\"],\n")
-	b.WriteString("  \"stuck\": false\n")
-	b.WriteString("}\n")
-	b.WriteString("```\n")
-
-	return b.String()
-}
-
-// buildSynthesisSystemPrompt builds the system prompt for synthesis
-func (s *QASynthesizer) buildSynthesisSystemPrompt() string {
-	return `You are a QA Synthesizer making decisions about fix quality.
-
-## Your Role
-You aggregate validation results and iteration history to make go/no-go decisions on fixes.
-
-## Decision Rules
-1. **APPROVE** when:
-   - All validations pass (syntax, linting, tests)
-   - No critical issues remain
-   - Fix is complete and minimal
-
-2. **FIX** when:
-   - Any validation fails
-   - Fix is incomplete
-   - Minor issues remain
-
-3. **BLOCK** when:
-   - Critical security issues remain
-   - Fix introduces new bugs
-   - Multiple retry attempts have failed
-
-## Stuck Detection
-Mark as "stuck" if:
-- Same validation errors appear in 2+ consecutive iterations
-- 3 or more fix attempts have been made
-- Errors are contradictory or unfixable
-
-Be concise but actionable in feedback.`
+	return fmt.Sprintf(qaSynthesisTaskPrompt,
+		input.IssueID,
+		input.Description,
+		input.SyntaxValid,
+		input.LintingPassed,
+		input.TestsPassed,
+		iterationHistory,
+	)
 }
 
 // parseDecision parses the decision from AI response

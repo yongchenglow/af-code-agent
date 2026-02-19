@@ -7,24 +7,28 @@ import (
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
+	_ "embed"
 	"github.com/yourorg/github-code-agent/agents/analyzer"
 	"github.com/yourorg/github-code-agent/agents/planner"
-	"github.com/yourorg/github-code-agent/agents/prompts"
 	"github.com/yourorg/github-code-agent/pkg/constants"
 	"github.com/yourorg/github-code-agent/pkg/utils"
 )
 
+//go:embed prompts/system.md
+var bugFixExecutorPrompt string
+
+//go:embed prompts/task.md
+var bugFixExecutorTask string
+
 // Executor handles bug fixes
 type Executor struct {
-	agent   *agent.Agent
-	prompts *prompts.BugFixExecutorPrompts
+	agent *agent.Agent
 }
 
 // NewExecutor creates a new bug fix executor
 func NewExecutor(a *agent.Agent) *Executor {
 	return &Executor{
-		agent:   a,
-		prompts: prompts.NewBugFixExecutorPrompts(),
+		agent: a,
 	}
 }
 
@@ -44,21 +48,16 @@ func (e *Executor) FixBug(ctx context.Context, issue *planner.BugIssue, fileCont
 	// Extract relevant code section
 	originalCode := utils.ExtractCodeSection(fileContent, issue.Line, constants.MaxFileContextLines)
 
-	// Create prompt issue format
-	promptIssue := &prompts.BugIssue{
-		ID:               issue.ID,
-		FilePath:         issue.FilePath,
-		Line:             issue.Line,
-		Type:             issue.Type,
-		Severity:         issue.Severity,
-		Title:            issue.Title,
-		Description:      issue.Description,
-		WhyItFails:       issue.WhyItFails,
-		ExpectedBehavior: issue.ExpectedBehavior,
-	}
-
-	// Build task prompt
-	taskPrompt := e.prompts.TaskPrompt(promptIssue)
+	// Build task prompt with template
+	taskPrompt := fmt.Sprintf(bugFixExecutorTask,
+		issue.Type,
+		issue.Severity,
+		issue.FilePath,
+		issue.Line,
+		issue.Description,
+		issue.WhyItFails,
+		issue.ExpectedBehavior,
+	)
 	taskPrompt += fmt.Sprintf("\n\n**Original Code**:\n```%s\n%s\n```\n\n**Fixed Code**:\n", language, originalCode)
 
 	// Create context with timeout
@@ -67,7 +66,7 @@ func (e *Executor) FixBug(ctx context.Context, issue *planner.BugIssue, fileCont
 
 	// Call AI to generate fix
 	response, err := e.agent.AI(aiCtx, taskPrompt,
-		ai.WithSystem(e.prompts.SystemPrompt),
+		ai.WithSystem(bugFixExecutorPrompt),
 		ai.WithTemperature(constants.LowAITemperature),
 		ai.WithMaxTokens(constants.FixerAIMaxTokens))
 

@@ -9,10 +9,17 @@ import (
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
+	_ "embed"
 	"github.com/yourorg/github-code-agent/agents/analyzer"
 	"github.com/yourorg/github-code-agent/pkg/constants"
 	"github.com/yourorg/github-code-agent/pkg/utils"
 )
+
+//go:embed prompts/system.md
+var reviewSystemPrompt string
+
+//go:embed prompts/security.md
+var securitySystemPrompt string
 
 // Reviewer handles AI-powered code review
 type Reviewer struct {
@@ -50,7 +57,7 @@ func (r *Reviewer) ReviewCode(ctx context.Context, files []*analyzer.FileChange,
 
 	// Use AgentField's built-in AI method
 	response, err := r.agent.AI(aiCtx, prompt,
-		ai.WithSystem(buildReviewSystemPrompt()),
+		ai.WithSystem(reviewSystemPrompt),
 		ai.WithTemperature(constants.DefaultAITemperature),
 		ai.WithMaxTokens(constants.ReviewAIMaxTokens))
 
@@ -90,7 +97,7 @@ func (r *Reviewer) DetectSecurityIssues(ctx context.Context, files []*analyzer.F
 
 	// Use AI for security analysis with lower temperature for consistency
 	response, err := r.agent.AI(aiCtx, prompt,
-		ai.WithSystem(buildSecuritySystemPrompt()),
+		ai.WithSystem(securitySystemPrompt),
 		ai.WithTemperature(constants.LowAITemperature),
 		ai.WithMaxTokens(constants.SecurityAIMaxTokens))
 
@@ -108,81 +115,6 @@ func (r *Reviewer) DetectSecurityIssues(ctx context.Context, files []*analyzer.F
 	}
 
 	return issues, nil
-}
-
-// buildReviewSystemPrompt creates the system prompt for code review
-func buildReviewSystemPrompt() string {
-	return `You are an expert code reviewer with deep knowledge of software engineering best practices.
-
-Your role is to analyze code for:
-- Bugs and potential runtime errors
-- Security vulnerabilities (SQL injection, XSS, authentication issues, etc.)
-- Performance problems (N+1 queries, inefficient algorithms, memory leaks)
-- Maintainability concerns (code complexity, naming, structure)
-- Best practice violations
-
-Provide specific, actionable feedback. For each issue:
-1. Clearly identify the problem
-2. Explain why it's problematic
-3. Suggest a concrete fix
-
-Output your review as a JSON object with this structure:
-{
-  "issues": [
-    {
-      "file_path": "path/to/file.go",
-      "line": 42,
-      "severity": "High|Medium|Low|Critical",
-      "category": "bug|security|performance|maintainability|style",
-      "title": "Brief title",
-      "description": "Detailed explanation of the issue",
-      "suggestion": "How to fix it"
-    }
-  ],
-  "summary": "Overall assessment of the code quality"
-}
-
-Severity guidelines:
-- Critical: Security vulnerabilities, data loss risks, breaking changes
-- High: Bugs that will cause failures, serious performance issues
-- Medium: Code smells, maintainability concerns, minor bugs
-- Low: Style issues, minor improvements`
-}
-
-// buildSecuritySystemPrompt creates the system prompt for security analysis
-func buildSecuritySystemPrompt() string {
-	return `You are a security expert specializing in application security and OWASP Top 10 vulnerabilities.
-
-Analyze code for security issues including:
-- Injection attacks (SQL, NoSQL, Command, LDAP)
-- Cross-Site Scripting (XSS)
-- Authentication and session management flaws
-- Insecure direct object references
-- Security misconfigurations
-- Sensitive data exposure
-- Missing access controls
-- Cross-Site Request Forgery (CSRF)
-- Using components with known vulnerabilities
-- Insufficient logging and monitoring
-- Hardcoded secrets, API keys, passwords
-- Cryptographic failures
-
-Output findings as a JSON array:
-[
-  {
-    "file_path": "path/to/file.go",
-    "line": 42,
-    "severity": "Critical|High|Medium|Low",
-    "type": "sql_injection|xss|secrets|etc",
-    "title": "Brief title",
-    "description": "Detailed security concern",
-    "cwe": "CWE-89",
-    "owasp": "A03:2021-Injection",
-    "remediation": "How to fix the vulnerability"
-  }
-]
-
-Only report actual security issues. Do not include general code quality concerns.`
 }
 
 // buildReviewPrompt constructs the review prompt from file changes

@@ -7,24 +7,28 @@ import (
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
+	_ "embed"
 	"github.com/yourorg/github-code-agent/agents/analyzer"
 	"github.com/yourorg/github-code-agent/agents/planner"
-	"github.com/yourorg/github-code-agent/agents/prompts"
 	"github.com/yourorg/github-code-agent/pkg/constants"
 	"github.com/yourorg/github-code-agent/pkg/utils"
 )
 
+//go:embed prompts/system.md
+var securityExecutorPrompt string
+
+//go:embed prompts/task.md
+var securityExecutorTask string
+
 // Executor handles security vulnerability fixes
 type Executor struct {
-	agent   *agent.Agent
-	prompts *prompts.SecurityExecutorPrompts
+	agent *agent.Agent
 }
 
 // NewExecutor creates a new security executor
 func NewExecutor(a *agent.Agent) *Executor {
 	return &Executor{
-		agent:   a,
-		prompts: prompts.NewSecurityExecutorPrompts(),
+		agent: a,
 	}
 }
 
@@ -44,22 +48,17 @@ func (e *Executor) FixSecurityIssue(ctx context.Context, issue *planner.Security
 	// Extract relevant code section
 	originalCode := utils.ExtractCodeSection(fileContent, issue.Line, constants.MaxFileContextLines)
 
-	// Create prompt issue format
-	promptIssue := &prompts.SecurityIssue{
-		ID:          issue.ID,
-		FilePath:    issue.FilePath,
-		Line:        issue.Line,
-		Type:        issue.Type,
-		Severity:    issue.Severity,
-		Title:       issue.Title,
-		Description: issue.Description,
-		CWE:         issue.CWE,
-		OWASP:       issue.OWASP,
-		Remediation: issue.Remediation,
-	}
-
-	// Build task prompt
-	taskPrompt := e.prompts.TaskPrompt(promptIssue)
+	// Build task prompt with template
+	taskPrompt := fmt.Sprintf(securityExecutorTask,
+		issue.Type,
+		issue.Severity,
+		issue.CWE,
+		issue.OWASP,
+		issue.FilePath,
+		issue.Line,
+		issue.Description,
+		issue.Remediation,
+	)
 	taskPrompt += fmt.Sprintf("\n\n**Original Code**:\n```%s\n%s\n```\n\n**Fixed Code**:\n", language, originalCode)
 
 	// Create context with timeout
@@ -68,7 +67,7 @@ func (e *Executor) FixSecurityIssue(ctx context.Context, issue *planner.Security
 
 	// Call AI to generate fix
 	response, err := e.agent.AI(aiCtx, taskPrompt,
-		ai.WithSystem(e.prompts.SystemPrompt),
+		ai.WithSystem(securityExecutorPrompt),
 		ai.WithTemperature(constants.LowAITemperature), // Lower temperature for security fixes
 		ai.WithMaxTokens(constants.FixerAIMaxTokens))
 

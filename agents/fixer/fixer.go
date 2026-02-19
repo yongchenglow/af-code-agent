@@ -2,6 +2,7 @@ package fixer
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"strings"
 	"time"
@@ -11,6 +12,9 @@ import (
 	"github.com/yourorg/github-code-agent/pkg/constants"
 	"github.com/yourorg/github-code-agent/pkg/utils"
 )
+
+//go:embed prompts/system.md
+var fixSystemPrompt string
 
 // GenerateFixesWithValidation generates and validates fixes with retry loop
 func GenerateFixesWithValidation(ctx context.Context, agentInstance *agent.Agent, issues []map[string]any, files []map[string]any, config *ValidationConfig) (*BatchFixResult, error) {
@@ -159,7 +163,7 @@ func generateSingleFix(ctx context.Context, agentInstance *agent.Agent, issue ma
 
 	// Call AI to generate fix
 	response, err := agentInstance.AI(aiCtx, prompt,
-		ai.WithSystem(buildFixSystemPrompt()),
+		ai.WithSystem(fixSystemPrompt),
 		ai.WithTemperature(constants.LowAITemperature),
 		ai.WithMaxTokens(constants.FixerAIMaxTokens))
 
@@ -218,20 +222,6 @@ func buildFixPrompt(issue map[string]any, originalCode, language string) string 
 **Fixed Code:**`, "```"+language+"\n"+originalCode+"\n```", language)
 
 	return prompt
-}
-
-// buildFixSystemPrompt builds the system prompt for fix generation
-func buildFixSystemPrompt() string {
-	return `You are an expert code fixer. Your task is to generate minimal, targeted fixes that:
-
-1. Pass all validation checks (syntax, linting, formatting)
-2. Solve the specific issue described
-3. Do not introduce new bugs or security vulnerabilities
-4. Maintain code readability and style
-5. Are production-ready
-
-Output ONLY the fixed code, no markdown formatting, no explanations, no comments about the changes.
-Just the pure, corrected code that can be directly used as a replacement.`
 }
 
 // CreateBatchFixSummary creates a summary of batch fix results

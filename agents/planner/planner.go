@@ -5,14 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
+	_ "embed"
 	"github.com/yourorg/github-code-agent/agents/analyzer"
-	"github.com/yourorg/github-code-agent/agents/prompts"
 	"github.com/yourorg/github-code-agent/pkg/constants"
 	"github.com/yourorg/github-code-agent/pkg/utils"
 )
+
+//go:embed prompts/system.md
+var plannerSystemPrompt string
+
+//go:embed prompts/task.md
+var plannerTaskPrompt string
 
 // ReviewPlan is the comprehensive plan created by the planner
 type ReviewPlan struct {
@@ -111,15 +118,13 @@ type FixTask struct {
 
 // Planner handles AI-powered code review planning
 type Planner struct {
-	agent  *agent.Agent
-	prompts *prompts.ReviewerPrompts
+	agent *agent.Agent
 }
 
 // NewPlanner creates a new code review planner
 func NewPlanner(a *agent.Agent) *Planner {
 	return &Planner{
-		agent:  a,
-		prompts: prompts.NewReviewerPrompts(),
+		agent: a,
 	}
 }
 
@@ -141,13 +146,12 @@ func (p *Planner) PlanReview(ctx context.Context, files []*analyzer.FileChange, 
 	}
 
 	// Build review context
-	reviewCtx := prompts.ReviewContext{
-		Files:     reviewableFiles,
-		PRContext: prContext,
-	}
+	reviewCtx := buildReviewContext(reviewableFiles, prContext)
 
-	// Build prompt using template system
-	taskPrompt := p.prompts.TaskPrompt(reviewCtx)
+	// Build prompt using template
+	prInfo := buildPRInfo(reviewCtx)
+	filesInfo := buildFilesInfo(reviewCtx.Files)
+	taskPrompt := fmt.Sprintf(plannerTaskPrompt, prInfo, filesInfo)
 
 	// Create context with timeout
 	aiCtx, cancel := context.WithTimeout(ctx, constants.DefaultAITimeout)
@@ -155,7 +159,7 @@ func (p *Planner) PlanReview(ctx context.Context, files []*analyzer.FileChange, 
 
 	// Use AgentField's built-in AI method
 	response, err := p.agent.AI(aiCtx, taskPrompt,
-		ai.WithSystem(p.prompts.SystemPrompt),
+		ai.WithSystem(plannerSystemPrompt),
 		ai.WithTemperature(constants.DefaultAITemperature),
 		ai.WithMaxTokens(constants.ReviewAIMaxTokens))
 
@@ -357,6 +361,63 @@ func generateFixPlan(plan *ReviewPlan) *FixPlan {
 	}
 
 	return fixPlan
+}
+
+// ReviewContext provides dynamic context to prompts
+type ReviewContext struct {
+	PRTitle       string
+	PRDescription string
+	Files         []*analyzer.FileChange
+}
+
+// buildReviewContext builds the review context from files and PR context
+func buildReviewContext(files []*analyzer.FileChange, prContext map[string]any) ReviewContext {
+	ctx := ReviewContext{
+		Files: files,
+	}
+	if title, ok := prContext["title"].(string); ok {
+		ctx.PRTitle = title
+	}
+	if description, ok := prContext["description"].(string); ok {
+		ctx.PRDescription = description
+	}
+	return ctx
+}
+
+// buildPRInfo builds the PR info section of the prompt
+func buildPRInfo(ctx ReviewContext) string {
+	var b strings.Builder
+	if ctx.PRTitle != "" {
+		b.WriteString("**PR Title**: ")
+		b.WriteString(ctx.PRTitle)
+		b.WriteString("\n")
+	}
+	if ctx.PRDescription != "" {
+		b.WriteString("**PR Description**: ")
+		b.WriteString(ctx.PRDescription)
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// buildFilesInfo builds the files info section of the prompt
+func buildFilesInfo(files []*analyzer.FileChange) string {
+	var b strings.Builder
+	for i, file := range files {
+		if i >= 20 {
+			b.WriteString(fmt.Sprintf("\n... and %d more files\n", len(files)-20))
+			break
+		}
+
+		b.WriteString(fmt.Sprintf("### File: %s (%s)\n", file.Filename, file.Language))
+		b.WriteString(fmt.Sprintf("Changes: +%d -%d\n", file.Additions, file.Deletions))
+		if file.Patch != "" {
+			b.WriteString("```diff\n")
+			b.WriteString(file.Patch)
+			b.WriteString("\n```\n\n")
+		}
+	}
+	return b.String()
 }
 
 // filterReviewableFiles filters out files that shouldn't be reviewed
