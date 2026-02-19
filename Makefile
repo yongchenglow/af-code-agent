@@ -49,7 +49,11 @@ fmt: ## Format code
 	go fmt ./...
 	@echo "✓ Format complete"
 
-lint: ## Run linter (requires golangci-lint)
+lint: ## Run linter with auto-fix
+	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found. Install from: https://golangci-lint.run/usage/install/"; exit 1; }
+	golangci-lint run --fix
+
+lint-check: ## Run linter without fixes (for CI)
 	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found. Install from: https://golangci-lint.run/usage/install/"; exit 1; }
 	golangci-lint run
 

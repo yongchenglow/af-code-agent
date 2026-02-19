@@ -195,7 +195,9 @@ func formatReviewSummary(issues *PrioritizedIssues) string {
 	if len(issues.Critical) > 0 || len(issues.High) > 0 {
 		builder.WriteString("**⚠️ High Priority Issues:**\n\n")
 
-		highPriority := append(issues.Critical, issues.High...)
+		highPriority := make([]*Issue, 0, len(issues.Critical)+len(issues.High))
+		highPriority = append(highPriority, issues.Critical...)
+		highPriority = append(highPriority, issues.High...)
 		if len(highPriority) > 5 {
 			highPriority = highPriority[:5]
 		}

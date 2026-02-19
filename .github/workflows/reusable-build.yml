@@ -118,6 +118,12 @@ jobs:
             ~/.cache/go-build
           key: go-modules-${{ runner.os }}-${{ hashFiles('go.sum') }}
 
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
       - name: Format check
         run: |
           make fmt
@@ -125,3 +131,6 @@ jobs:
             echo "Code is not formatted. Please run 'make fmt'"
             exit 1
           fi
+
+      - name: Lint check
+        run: make lint-check

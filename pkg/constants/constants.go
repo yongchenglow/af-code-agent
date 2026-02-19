@@ -67,6 +67,7 @@ const (
 	DefaultServerPort       = "8080"
 	WebhookEndpoint         = "/webhook"
 	DebounceCleanupInterval = 5 * time.Minute
+	DefaultHTTPTimeout      = 30 * time.Second
 )
 
 // Agent Configuration

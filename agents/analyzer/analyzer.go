@@ -128,8 +128,9 @@ func CalculateComplexity(content string) (*Metrics, error) {
 	}, nil
 }
 
-// ShouldIgnoreFile checks if a file should be ignored based on patterns
-// Deprecated: Use utils.ShouldIgnoreFile instead
+// ShouldIgnoreFile checks if a file should be ignored based on patterns.
+//
+// Deprecated: Use utils.ShouldIgnoreFile instead.
 func ShouldIgnoreFile(filename string, ignorePatterns []string) bool {
 	return utils.ShouldIgnoreFile(filename, ignorePatterns)
 }

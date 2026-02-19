@@ -46,20 +46,20 @@ func ShouldSkipFile(filename string) bool {
 // ShouldIgnoreFile checks if a file should be ignored based on patterns
 func ShouldIgnoreFile(filename string, ignorePatterns []string) bool {
 	for _, pattern := range ignorePatterns {
-		// Simple pattern matching (can be enhanced with glob patterns)
-		if strings.HasSuffix(pattern, "**") {
+		switch {
+		case strings.HasSuffix(pattern, "**"):
 			// Directory pattern
 			prefix := strings.TrimSuffix(pattern, "**")
 			if strings.HasPrefix(filename, prefix) {
 				return true
 			}
-		} else if strings.HasPrefix(pattern, "*.") {
+		case strings.HasPrefix(pattern, "*."):
 			// Extension pattern
 			ext := strings.TrimPrefix(pattern, "*")
 			if strings.HasSuffix(filename, ext) {
 				return true
 			}
-		} else if filename == pattern {
+		case filename == pattern:
 			// Exact match
 			return true
 		}

@@ -1,0 +1,116 @@
+# .golangci.yml - Linter configuration for GitHub Code Agent
+# Documentation: https://golangci-lint.run/usage/configuration/
+
+version: "2"
+
+run:
+  # Timeout for analysis
+  timeout: 5m
+  # Include test files
+  tests: true
+  # Allow parallel execution
+  allow-parallel-runners: true
+
+linters:
+  # Disable all linters by default
+  disable-all: true
+  # Enable specific linters
+  enable:
+    # Bug detection
+    - errcheck      # Check for unchecked errors
+    - govet         # Go's standard vetting tool
+    - staticcheck   # Advanced static analysis
+    
+    # Code quality
+    - gocritic      # Critical review of code
+    - unused        # Check for unused code
+    
+    # Spelling
+    - misspell      # Check spelling
+    
+    # Best practices
+    - ineffassign   # Detect ineffective assignments
+
+formatters:
+  enable:
+    - gofmt
+  
+  settings:
+    gofmt:
+      simplify: true
+
+linters-settings:
+  # gocritic settings
+  gocritic:
+    enabled-checks:
+      - appendAssign
+      - argOrder
+      - badCond
+      - caseOrder
+      - codegenComment
+      - commentedOutCode
+      - deprecatedComment
+      - dupArg
+      - dupBranchBody
+      - dupCase
+      - dupSubExpr
+      - exitAfterDefer
+      - flagDeref
+      - flagName
+      - nilValReturn
+      - offBy1
+      - sloppyReassign
+      - weakCond
+      - octalLiteral
+      - filepathJoin
+      - preferFilepathJoin
+      - truncateCmp
+      - uncheckedInlineErr
+      - unnecessaryDefer
+      - unslice
+      - valSwap
+      - whyNoLint
+      - wrapperFunc
+
+  # misspell settings
+  misspell:
+    locale: US
+
+  # errcheck settings
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+issues:
+  # Maximum issues count per one linter
+  max-issues-per-linter: 0
+  # Maximum count of issues with the same text
+  max-same-issues: 0
+  # Exclude files
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocritic
+
+  # Show only new issues
+  new: false
+  # Show only new issues created after git revision
+  new-from-rev: ""
+  # Show only new issues created in git patch
+  new-from-patch: ""
+
+# Output configuration
+output:
+  # Format: colored-line-number|line-number|json|tab|checkstyle|code-climate|junit-xml|github-actions
+  format: colored-line-number
+  # Print lines of code with issue
+  print-issued-lines: true
+  # Print linter name in the end of issue text
+  print-linter-name: true
+  # Make issues output unique by line
+  uniq-by-line: true
+  # Add a prefix to the output file references
+  path-prefix: ""
+  # Sort results by: filepath, line, column, severity, linter
+  sort-results: true

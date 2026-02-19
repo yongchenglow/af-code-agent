@@ -17,14 +17,16 @@ import (
 
 // Server manages the HTTP server and routing
 type Server struct {
-	container *Container
-	handler   http.Handler
+	container     *Container
+	handler       http.Handler
+	healthChecker *HealthChecker
 }
 
 // NewServer creates a new server instance
 func NewServer(container *Container) *Server {
 	return &Server{
-		container: container,
+		container:     container,
+		healthChecker: NewHealthChecker(container),
 	}
 }
 
@@ -78,6 +80,21 @@ func (s *Server) SetupRoutes() {
 		)
 		r = r.WithContext(ctx)
 
+		// Route /health/* requests to health checker
+		if len(r.URL.Path) >= 7 && r.URL.Path[:7] == "/health" {
+			switch r.URL.Path {
+			case "/health/live":
+				s.healthChecker.handleLive(w, r)
+			case "/health/ready":
+				s.healthChecker.handleReady(w, r)
+			case "/health/started":
+				s.healthChecker.handleStarted(w, r)
+			default:
+				http.NotFound(w, r)
+			}
+			return
+		}
+
 		// Route /webhook requests to the webhook handler
 		if r.URL.Path == constants.WebhookEndpoint {
 			webhookHandler.ServeHTTP(w, r)
@@ -96,12 +113,17 @@ func (s *Server) Start() error {
 
 	s.logStartupInfo(port)
 
+	// Mark the application as started
+	s.healthChecker.MarkStarted()
+
 	server := &http.Server{
-		Addr:    ":" + port,
-		Handler: s.handler,
+		Addr:              ":" + port,
+		Handler:           s.handler,
+		ReadHeaderTimeout: constants.DefaultHTTPTimeout,
 	}
 
 	log.Printf("Webhook endpoint: http://localhost:%s%s", port, constants.WebhookEndpoint)
+	log.Printf("Health endpoints: http://localhost:%s/health/{live,ready,started}", port)
 	return server.ListenAndServe()
 }
 
