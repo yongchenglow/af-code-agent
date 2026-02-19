@@ -71,3 +71,53 @@ agent:
     maxReplicas: 10
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 75
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  annotations: {}
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  host: agentfield.example.com
+  tlsSecretName: agentfield-tls
+  
+  # AWS ALB configuration (optional)
+  awsALB: false
+  awsALBCertARN: ""
+  securityGroups: []
+  
+  # GCP configuration (optional)
+  gcp: false
+  gcpCertName: ""
+  
+  # WAF integration (optional)
+  wafAclArn: ""
+
+# Health check configuration
+healthCheck:
+  liveness:
+    path: /health/live
+    port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /health/ready
+    port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  startup:
+    path: /health/started
+    port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30

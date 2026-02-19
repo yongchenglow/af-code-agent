@@ -13,6 +13,7 @@ import (
 	"github.com/yourorg/github-code-agent/agents/webhook"
 	"github.com/yourorg/github-code-agent/pkg/constants"
 	ctxpkg "github.com/yourorg/github-code-agent/pkg/context"
+	"github.com/yourorg/github-code-agent/pkg/middleware"
 )
 
 // Server manages the HTTP server and routing
@@ -104,7 +105,8 @@ func (s *Server) SetupRoutes() {
 		agentFieldHandler.ServeHTTP(w, r)
 	})
 
-	s.handler = mainHandler
+	// Apply security middleware chain
+	s.handler = middleware.SecurityChain(mainHandler)
 }
 
 // Start starts the HTTP server

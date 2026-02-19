@@ -1,0 +1,144 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agentfield-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "agentfield.name" . }}
+    chart: {{ include "agentfield.chart" . }}
+    release: {{ .Release.Name }}
+  annotations:
+    # TLS/SSL Configuration
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    
+    # Security Headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-Frame-Options "DENY" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'" always;
+      add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+      add_header Pragma "no-cache" always;
+      add_header Expires "0" always;
+    
+    # HSTS (HTTP Strict Transport Security)
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
+    nginx.ingress.kubernetes.io/hsts-preload: "true"
+    
+    # Rate Limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-rpm: "600"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "2"
+    nginx.ingress.kubernetes.io/limit-key: "$binary_remote_addr"
+    
+    # Connection settings
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    
+    # SSL Configuration
+    nginx.ingress.kubernetes.io/ssl-ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - {{ .Values.ingress.host | quote }}
+    secretName: {{ .Values.ingress.tlsSecretName | default "agentfield-tls" }}
+  rules:
+  - host: {{ .Values.ingress.host | quote }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "agentfield.fullname" . }}
+            port:
+              number: {{ .Values.service.port }}
+---
+# Alternative Ingress for AWS ALB
+{{- if .Values.ingress.awsALB }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agentfield-ingress-alb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "agentfield.name" . }}
+    chart: {{ include "agentfield.chart" . }}
+    release: {{ .Release.Name }}
+  annotations:
+    # AWS ALB specific annotations
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.awsALBCertARN | quote }}
+    
+    # Security groups
+    alb.ingress.kubernetes.io/security-groups: {{ .Values.ingress.securityGroups | join "," | quote }}
+    
+    # SSL Policy (TLS 1.3)
+    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+    
+    # WAF integration (optional)
+    # alb.ingress.kubernetes.io/wafv2-acl-arn: {{ .Values.ingress.wafAclArn | quote }}
+spec:
+  rules:
+  - host: {{ .Values.ingress.host | quote }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "agentfield.fullname" . }}
+            port:
+              number: {{ .Values.service.port }}
+{{- end }}
+---
+# GCP Ingress Configuration
+{{- if .Values.ingress.gcp }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agentfield-ingress-gcp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "agentfield.name" . }}
+    chart: {{ include "agentfield.chart" . }}
+    release: {{ .Release.Name }}
+  annotations:
+    # GCP specific annotations
+    kubernetes.io/ingress.class: gce
+    kubernetes.io/ingress.allow-http: "false"
+    
+    # SSL Certificate
+    kubernetes.io/ingress.pre-shared-cert: {{ .Values.ingress.gcpCertName | quote }}
+    
+    # Cloud Armor (WAF) integration
+    # networking.gke.io/v1beta1.FrontendConfig: agentfield-frontend-config
+spec:
+  tls:
+  - hosts:
+    - {{ .Values.ingress.host | quote }}
+    secretName: {{ .Values.ingress.tlsSecretName | default "agentfield-tls" }}
+  rules:
+  - host: {{ .Values.ingress.host | quote }}
+    http:
+      paths:
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: {{ include "agentfield.fullname" . }}
+            port:
+              number: {{ .Values.service.port }}
+{{- end }}

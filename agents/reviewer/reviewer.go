@@ -12,6 +12,7 @@ import (
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
 	"github.com/yourorg/github-code-agent/agents/analyzer"
+	"github.com/yourorg/github-code-agent/agents/security"
 	"github.com/yourorg/github-code-agent/pkg/circuitbreaker"
 	"github.com/yourorg/github-code-agent/pkg/constants"
 	"github.com/yourorg/github-code-agent/pkg/logger"
@@ -35,6 +36,8 @@ type ReviewerConfig struct {
 	SecurityCircuitBreaker *circuitbreaker.CircuitBreaker
 	// SecurityRetryer is the retryer for security analysis calls
 	SecurityRetryer *retry.Retryer
+	// SecretScanner is the scanner for detecting secrets in code
+	SecretScanner *security.Scanner
 }
 
 // Reviewer handles AI-powered code review
@@ -44,6 +47,7 @@ type Reviewer struct {
 	aiRetryer              *retry.Retryer
 	securityCircuitBreaker *circuitbreaker.CircuitBreaker
 	securityRetryer        *retry.Retryer
+	secretScanner          *security.Scanner
 }
 
 // NewReviewer creates a new code reviewer with default configuration
@@ -85,12 +89,19 @@ func NewReviewerWithConfig(a *agent.Agent, config ReviewerConfig) *Reviewer {
 		securityRetryer = retry.New(retry.ConfigPreset{}.ForAI())
 	}
 
+	// Use provided scanner or create default
+	scanner := config.SecretScanner
+	if scanner == nil {
+		scanner = security.NewScanner()
+	}
+
 	return &Reviewer{
 		agent:                  a,
 		aiCircuitBreaker:       aiCB,
 		aiRetryer:              aiRetryer,
 		securityCircuitBreaker: securityCB,
 		securityRetryer:        securityRetryer,
+		secretScanner:          scanner,
 	}
 }
 
@@ -109,19 +120,23 @@ func (r *Reviewer) ReviewCode(ctx context.Context, files []*analyzer.FileChange,
 		}, nil
 	}
 
-	// Build review prompt
+	// Get logger with context
+	log := logger.Default().WithContext(ctx)
+
+	// Step 1: Scan for secrets (deterministic, fast)
+	secretFindings := r.scanForSecrets(reviewableFiles)
+	log.Debug("Secret scan completed", "findings", len(secretFindings))
+
+	// Step 2: Build review prompt and perform AI review
 	prompt := buildReviewPrompt(reviewableFiles, prContext)
 
 	// Create context with timeout for large reviews
 	aiCtx, cancel := context.WithTimeout(ctx, constants.DefaultAITimeout)
 	defer cancel()
 
-	// Get logger with context
-	log := logger.Default().WithContext(ctx)
-
 	// Execute with retry and circuit breaker
 	var response interface{}
-	
+
 	err := r.aiRetryer.Execute(aiCtx, func() error {
 		return r.aiCircuitBreaker.Execute(func() error {
 			resp, err := r.agent.AI(aiCtx, prompt,
@@ -176,11 +191,15 @@ func (r *Reviewer) ReviewCode(ctx context.Context, files []*analyzer.FileChange,
 
 	report.Model = aiResponse.Model()
 
+	// Step 3: Merge secret findings into the review report
+	r.mergeSecretFindings(report, secretFindings)
+
 	// Log success with metrics
 	metrics := r.aiCircuitBreaker.Metrics()
 	log.Debug("AI review completed",
 		"files_reviewed", len(reviewableFiles),
 		"issues_found", report.TotalIssues,
+		"secrets_found", len(secretFindings),
 		"circuit_failures", metrics.FailureCount,
 		"circuit_state", metrics.State.String())
 
@@ -442,4 +461,48 @@ func filterCodeFiles(files []*analyzer.FileChange) []*analyzer.FileChange {
 	}
 
 	return codeFiles
+}
+
+// scanForSecrets scans all files for exposed secrets and credentials
+func (r *Reviewer) scanForSecrets(files []*analyzer.FileChange) []*security.SecretFinding {
+	var allFindings []*security.SecretFinding
+
+	for _, file := range files {
+		// Skip files without content
+		if file.Content == "" {
+			continue
+		}
+
+		// Scan file content for secrets
+		findings := r.secretScanner.Scan(file.Content, file.Filename)
+		allFindings = append(allFindings, findings...)
+	}
+
+	return allFindings
+}
+
+// mergeSecretFindings merges secret findings into the review report
+func (r *Reviewer) mergeSecretFindings(report *ReviewReport, findings []*security.SecretFinding) {
+	for _, finding := range findings {
+		// Convert SecretFinding to Issue
+		issue := &Issue{
+			ID:          fmt.Sprintf("secret-%s-%d", finding.FilePath, finding.Line),
+			FilePath:    finding.FilePath,
+			Line:        finding.Line,
+			Column:      finding.Column,
+			Severity:    finding.Severity,
+			Category:    CategorySecurity,
+			Title:       fmt.Sprintf("Exposed %s detected", finding.Type),
+			Description: finding.Description,
+			Suggestion:  finding.Remediation,
+		}
+
+		// Add issue to report
+		report.Issues = append(report.Issues, issue)
+		report.TotalIssues++
+
+		// Update statistics
+		report.IssuesBySeverity[finding.Severity]++
+		report.IssuesByCategory[CategorySecurity]++
+	}
 }
