@@ -6,12 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	_ "embed"
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
 	"github.com/yourorg/github-code-agent/agents/analyzer"
+	"github.com/yourorg/github-code-agent/pkg/circuitbreaker"
 	"github.com/yourorg/github-code-agent/pkg/constants"
+	"github.com/yourorg/github-code-agent/pkg/logger"
+	"github.com/yourorg/github-code-agent/pkg/retry"
 	"github.com/yourorg/github-code-agent/pkg/utils"
 )
 
@@ -21,15 +25,72 @@ var reviewSystemPrompt string
 //go:embed prompts/security.md
 var securitySystemPrompt string
 
-// Reviewer handles AI-powered code review
-type Reviewer struct {
-	agent *agent.Agent
+// ReviewerConfig holds configuration for the Reviewer
+type ReviewerConfig struct {
+	// AICircuitBreaker is the circuit breaker for AI calls
+	AICircuitBreaker *circuitbreaker.CircuitBreaker
+	// AIRetryer is the retryer for AI calls
+	AIRetryer *retry.Retryer
+	// SecurityCircuitBreaker is the circuit breaker for security analysis calls
+	SecurityCircuitBreaker *circuitbreaker.CircuitBreaker
+	// SecurityRetryer is the retryer for security analysis calls
+	SecurityRetryer *retry.Retryer
 }
 
-// NewReviewer creates a new code reviewer
+// Reviewer handles AI-powered code review
+type Reviewer struct {
+	agent                  *agent.Agent
+	aiCircuitBreaker       *circuitbreaker.CircuitBreaker
+	aiRetryer              *retry.Retryer
+	securityCircuitBreaker *circuitbreaker.CircuitBreaker
+	securityRetryer        *retry.Retryer
+}
+
+// NewReviewer creates a new code reviewer with default configuration
 func NewReviewer(a *agent.Agent) *Reviewer {
+	return NewReviewerWithConfig(a, ReviewerConfig{})
+}
+
+// NewReviewerWithConfig creates a new code reviewer with custom configuration
+func NewReviewerWithConfig(a *agent.Agent, config ReviewerConfig) *Reviewer {
+	// Use provided circuit breakers or create defaults
+	aiCB := config.AICircuitBreaker
+	if aiCB == nil {
+		aiCB = circuitbreaker.New(circuitbreaker.Config{
+			Threshold:           5,
+			Timeout:             1 * time.Minute,
+			HalfOpenMaxRequests: 3,
+			Name:                "ai-service",
+		})
+	}
+
+	securityCB := config.SecurityCircuitBreaker
+	if securityCB == nil {
+		securityCB = circuitbreaker.New(circuitbreaker.Config{
+			Threshold:           5,
+			Timeout:             1 * time.Minute,
+			HalfOpenMaxRequests: 3,
+			Name:                "security-analysis",
+		})
+	}
+
+	// Use provided retryers or create defaults
+	aiRetryer := config.AIRetryer
+	if aiRetryer == nil {
+		aiRetryer = retry.New(retry.ConfigPreset{}.ForAI())
+	}
+
+	securityRetryer := config.SecurityRetryer
+	if securityRetryer == nil {
+		securityRetryer = retry.New(retry.ConfigPreset{}.ForAI())
+	}
+
 	return &Reviewer{
-		agent: a,
+		agent:                  a,
+		aiCircuitBreaker:       aiCB,
+		aiRetryer:              aiRetryer,
+		securityCircuitBreaker: securityCB,
+		securityRetryer:        securityRetryer,
 	}
 }
 
@@ -55,26 +116,73 @@ func (r *Reviewer) ReviewCode(ctx context.Context, files []*analyzer.FileChange,
 	aiCtx, cancel := context.WithTimeout(ctx, constants.DefaultAITimeout)
 	defer cancel()
 
-	// Use AgentField's built-in AI method
-	response, err := r.agent.AI(aiCtx, prompt,
-		ai.WithSystem(reviewSystemPrompt),
-		ai.WithTemperature(constants.DefaultAITemperature),
-		ai.WithMaxTokens(constants.ReviewAIMaxTokens))
+	// Get logger with context
+	log := logger.Default().WithContext(ctx)
+
+	// Execute with retry and circuit breaker
+	var response interface{}
+	
+	err := r.aiRetryer.Execute(aiCtx, func() error {
+		return r.aiCircuitBreaker.Execute(func() error {
+			resp, err := r.agent.AI(aiCtx, prompt,
+				ai.WithSystem(reviewSystemPrompt),
+				ai.WithTemperature(constants.DefaultAITemperature),
+				ai.WithMaxTokens(constants.ReviewAIMaxTokens))
+
+			if err != nil {
+				log.Warn("AI review attempt failed",
+					"error", err,
+					"circuit_state", r.aiCircuitBreaker.State().String())
+				return err
+			}
+
+			response = resp
+			return nil
+		})
+	})
 
 	if err != nil {
+		// Check for specific error types
+		if errors.Is(err, circuitbreaker.ErrCircuitOpen) {
+			log.Error("AI review blocked by circuit breaker",
+				"state", r.aiCircuitBreaker.State().String(),
+				"metrics", r.aiCircuitBreaker.Metrics())
+			return nil, fmt.Errorf("AI service unavailable (circuit breaker open): %w", err)
+		}
+		if errors.Is(err, retry.ErrMaxAttemptsExceeded) {
+			log.Error("AI review failed after all retry attempts")
+			return nil, fmt.Errorf("AI review failed after retries: %w", err)
+		}
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, fmt.Errorf("AI review timeout: request exceeded 10 minute limit: %w", err)
 		}
 		return nil, fmt.Errorf("AI review failed: %w", err)
 	}
 
+	// Type assert the response
+	aiResponse, ok := response.(interface {
+		Text() string
+		Model() string
+	})
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type from AI")
+	}
+
 	// Parse AI response into structured review report
-	report, err := parseReviewResponse(response.Text())
+	report, err := parseReviewResponse(aiResponse.Text())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse review response: %w", err)
 	}
 
-	report.Model = response.Model
+	report.Model = aiResponse.Model()
+
+	// Log success with metrics
+	metrics := r.aiCircuitBreaker.Metrics()
+	log.Debug("AI review completed",
+		"files_reviewed", len(reviewableFiles),
+		"issues_found", report.TotalIssues,
+		"circuit_failures", metrics.FailureCount,
+		"circuit_state", metrics.State.String())
 
 	return report, nil
 }
@@ -95,24 +203,70 @@ func (r *Reviewer) DetectSecurityIssues(ctx context.Context, files []*analyzer.F
 	aiCtx, cancel := context.WithTimeout(ctx, constants.DefaultAITimeout)
 	defer cancel()
 
-	// Use AI for security analysis with lower temperature for consistency
-	response, err := r.agent.AI(aiCtx, prompt,
-		ai.WithSystem(securitySystemPrompt),
-		ai.WithTemperature(constants.LowAITemperature),
-		ai.WithMaxTokens(constants.SecurityAIMaxTokens))
+	// Get logger with context
+	log := logger.Default().WithContext(ctx)
+
+	// Execute with retry and circuit breaker
+	var response interface{}
+	err := r.securityRetryer.Execute(aiCtx, func() error {
+		return r.securityCircuitBreaker.Execute(func() error {
+			resp, err := r.agent.AI(aiCtx, prompt,
+				ai.WithSystem(securitySystemPrompt),
+				ai.WithTemperature(constants.LowAITemperature),
+				ai.WithMaxTokens(constants.SecurityAIMaxTokens))
+
+			if err != nil {
+				log.Warn("Security analysis attempt failed",
+					"error", err,
+					"circuit_state", r.securityCircuitBreaker.State().String())
+				return err
+			}
+
+			response = resp
+			return nil
+		})
+	})
 
 	if err != nil {
+		// Check for specific error types
+		if errors.Is(err, circuitbreaker.ErrCircuitOpen) {
+			log.Error("Security analysis blocked by circuit breaker",
+				"state", r.securityCircuitBreaker.State().String(),
+				"metrics", r.securityCircuitBreaker.Metrics())
+			return nil, fmt.Errorf("security analysis unavailable (circuit breaker open): %w", err)
+		}
+		if errors.Is(err, retry.ErrMaxAttemptsExceeded) {
+			log.Error("Security analysis failed after all retry attempts")
+			return nil, fmt.Errorf("security analysis failed after retries: %w", err)
+		}
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, fmt.Errorf("security analysis timeout: request exceeded 10 minute limit: %w", err)
 		}
 		return nil, fmt.Errorf("security analysis failed: %w", err)
 	}
 
+	// Type assert the response
+	aiResponse, ok := response.(interface {
+		Text() string
+		Model() string
+	})
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type from AI")
+	}
+
 	// Parse security issues from AI response
-	issues, err := parseSecurityIssues(response.Text())
+	issues, err := parseSecurityIssues(aiResponse.Text())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse security issues: %w", err)
 	}
+
+	// Log success with metrics
+	metrics := r.securityCircuitBreaker.Metrics()
+	log.Debug("Security analysis completed",
+		"files_analyzed", len(codeFiles),
+		"issues_found", len(issues),
+		"circuit_failures", metrics.FailureCount,
+		"circuit_state", metrics.State.String())
 
 	return issues, nil
 }
