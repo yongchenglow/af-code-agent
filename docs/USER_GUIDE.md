@@ -3,15 +3,13 @@
 ## Table of Contents
 
 1. [Introduction](#introduction)
-2. [Installation](#installation)
-3. [GitHub App Setup](#github-app-setup)
-4. [Configuration](#configuration)
-5. [First PR Review](#first-pr-review)
-6. [Operating Modes](#operating-modes)
-7. [Language Support](#language-support)
-8. [Troubleshooting](#troubleshooting)
-9. [Best Practices](#best-practices)
-10. [FAQ](#faq)
+2. [Getting Started](#getting-started)
+3. [Operating Modes](#operating-modes)
+4. [Using the Agent](#using-the-agent)
+5. [Language Support](#language-support)
+6. [Troubleshooting](#troubleshooting)
+7. [Best Practices](#best-practices)
+8. [FAQ](#faq)
 
 ## Introduction
 
@@ -30,261 +28,72 @@ The GitHub Code Review Agent is an autonomous AI-powered code reviewer that auto
 - 📝 **Standards Validation**: Enforces coding standards and best practices
 - 🔧 **Auto-Fix**: Generates and applies fixes with validation loop
 - 🎯 **Smart Prioritization**: Issues categorized by severity (Critical, High, Medium, Low)
-- 🔄 **Two Modes**: YOLO (direct push) and Safe (PR with fixes)
+- 🔄 **Two Modes**: Safe (PR with fixes) and YOLO (direct push)
 
-## Installation
+## Getting Started
 
-### Prerequisites
+### Quick Setup
 
-- Go 1.21 or higher
-- GitHub organization or repository with admin access
-- DeepSeek API key (or OpenAI-compatible API)
-- AgentField deployed (optional, for distributed deployment)
+1. **Clone and build:**
 
-### Quick Start
-
-1. **Clone the repository:**
-
-```bash
-git clone https://github.com/yourorg/github-code-agent.git
-cd github-code-agent
-```
-
-1. **Install dependencies:**
-
-```bash
-go mod download
-```
-
-1. **Build the agent:**
-
-```bash
-go build -o github-code-agent ./cmd/agent
-```
-
-1. **Create environment configuration:**
-
-```bash
-cp .env.example .env
-# Edit .env with your credentials
-```
-
-## GitHub App Setup
-
-### Step 1: Create a GitHub App
-
-1. Go to GitHub Settings → Developer settings → GitHub Apps → New GitHub App
-2. Fill in the required information:
-   - **GitHub App name**: `Your Org Code Review Agent`
-   - **Homepage URL**: Your organization URL
-   - **Webhook URL**: `https://your-domain.com/webhook` (where agent is deployed)
-   - **Webhook secret**: Generate a strong secret (save for later)
-
-3. **Configure permissions:**
-
-   Repository permissions:
-   - **Contents**: Read & Write (to push fixes)
-   - **Pull requests**: Read & Write (to comment and create PRs)
-   - **Checks**: Read (to access CI/CD status)
-   - **Metadata**: Read
-
-4. **Subscribe to events:**
-   - Pull request (opened, synchronize, reopened)
-   - Check suite (completed)
-   - Workflow run (completed)
-
-5. **Create the app** and note the **App ID**
-
-### Step 2: Generate Private Key
-
-1. Scroll to "Private keys" section
-2. Click "Generate a private key"
-3. Save the downloaded `.pem` file securely
-
-### Step 3: Install the App
-
-1. Go to "Install App" tab
-2. Install on your organization or specific repositories
-3. Note the **Installation ID** from the URL (e.g., `https://github.com/settings/installations/12345`)
-
-### Step 4: Configure Environment Variables
-
-Update your `.env` file:
-
-```bash
-# GitHub Configuration
-GITHUB_APP_ID=123456
-GITHUB_PRIVATE_KEY_PATH=./path/to/private-key.pem
-GITHUB_WEBHOOK_SECRET=your-webhook-secret
-
-# AI Configuration (DeepSeek via OpenRouter)
-OPENROUTER_API_KEY=sk-or-v1-your-api-key
-AI_MODEL=deepseek/deepseek-chat
-AI_TEMPERATURE=0.2
-AI_MAX_TOKENS=4000
-
-# AgentField (optional)
-AGENTFIELD_URL=http://localhost:8080
-
-# Application
-LOG_LEVEL=info
-PORT=8001
-```
-
-## Configuration
-
-Create `.github/code-agent.yml` in your repository:
-
-```yaml
-# Agent configuration
-agent:
-  enabled: true
-  mode: safe # "safe" or "yolo"
-
-# Webhook triggers
-webhooks:
-  triggers:
-    - pull_request.opened
-    - pull_request.synchronize
-    - check_suite.completed
-  wait_for_ci: true
-  debounce_seconds: 30
-
-# Review settings
-review:
-  auto_review: true
-  auto_fix: true
-  severity_threshold: medium # Only auto-fix medium and below
-  ignore_paths:
-    - "*.md"
-    - "docs/**"
-    - "tests/fixtures/**"
-
-# Validation settings
-validation:
-  enabled: true
-  max_fix_attempts: 3
-  checks:
-    - syntax
-    - linting
-    - formatting
-    - security
-  timeout_seconds: 30
-
-# Coding standards
-standards:
-  coding:
-    max_line_length: 100
-    max_function_length: 50
-    max_complexity: 10
-    naming_conventions:
-      functions: snake_case
-      classes: PascalCase
-
-  documentation:
-    require_docstrings: true
-    docstring_style: google
-    require_type_hints: true
-
-  security:
-    check_dependencies: true
-    check_secrets: true
-    owasp_checks: true
-
-# Language-specific settings
-languages:
-  python:
-    linters:
-      - pylint
-      - black
-      - mypy
-    min_test_coverage: 80
-
-  javascript:
-    linters:
-      - eslint
-      - prettier
-    frameworks:
-      - react
-
-  go:
-    linters:
-      - golangci-lint
-    min_test_coverage: 75
-```
-
-## First PR Review
-
-### Step 1: Create a Test PR
-
-Create a simple PR with a few code changes:
-
-```go
-// Example: main.go
-package main
-
-import "fmt"
-
-func main() {
-    user := getUser()
-    fmt.Println(user.Name) // Potential nil pointer!
-}
-
-func getUser() *User {
-    // Missing nil check
-    return nil
-}
-
-type User struct {
-    Name string
-}
-```
-
-### Step 2: Open the PR
-
-1. Push your branch: `git push origin feature-branch`
-2. Open a PR on GitHub
-3. The agent will automatically trigger
-
-### Step 3: Watch the Agent Work
-
-You'll see the agent:
-
-1. **Post initial comment** acknowledging the review
-2. **Analyze the PR** (file changes, code structure, metrics)
-3. **Run validations** (standards, security, quality)
-4. **Post review comments** with issues found:
-
-   ```
-   🔴 Critical: Potential nil pointer dereference
-
-   Details:
-   The function `main` doesn't check if `user` is nil before accessing
-   the `Name` field, which will cause a panic.
-
-   Suggested fix:
-   Add nil check: if user != nil { ... }
-
-   Automated review by GitHub Code Agent
+   ```bash
+   git clone <repository-url>
+   cd github-code-agent
+   go build -o github-code-agent ./cmd/agent
    ```
 
-5. **Generate fixes** (if auto-fix enabled)
-6. **Create fix PR** (Safe mode) or push directly (YOLO mode)
-7. **Update comments** with links to fixes
+2. **Configure environment:**
 
-### Step 4: Review the Results
+   ```bash
+   cp .env.example .env
+   # Edit .env with your credentials
+   ```
 
-**Safe Mode:**
+3. **Set up GitHub App:**
 
-- A new PR will be created (e.g., `🤖 Automated fixes for PR #123`)
-- Review the fixes and merge if acceptable
-- Original PR comments will link to the fix PR
+   See [GitHub App Setup Guide](GITHUB_APP_SETUP.md) for detailed instructions.
 
-**YOLO Mode:**
+4. **Configure repository:**
 
-- Fixes are pushed directly to your PR branch
-- PR comments will link to the fix commit
-- CI/CD runs automatically to verify fixes
+   Create `.github/code-agent.yml` in your repository (see [Configuration Reference](CONFIGURATION_REFERENCE.md)).
+
+### First PR Review
+
+1. **Create a test PR** with some code changes
+2. **Push your branch**: `git push origin feature-branch`
+3. **Open a PR** on GitHub
+4. **Watch the agent work**:
+   - Posts initial acknowledgment comment
+   - Analyzes code and runs validations
+   - Posts review comments with issues found
+   - Generates and applies fixes (if enabled)
+   - Updates comments with fix links
+
+### Understanding Review Comments
+
+The agent posts comments with severity indicators:
+
+```
+🔴 Critical: Potential nil pointer dereference
+
+Details:
+The function `main` doesn't check if `user` is nil before accessing
+the `Name` field, which will cause a panic.
+
+Suggested fix:
+Add nil check: if user != nil { ... }
+
+Automated review by GitHub Code Agent
+```
+
+**Severity Levels:**
+
+| Emoji | Severity | Auto-Fix           | Examples                                     |
+| ----- | -------- | ------------------ | -------------------------------------------- |
+| 🔴    | Critical | ✓ (Safe mode only) | Security vulnerabilities, breaking changes   |
+| 🟠    | High     | ✓                  | Bugs, performance issues, major code smells  |
+| 🟡    | Medium   | ✓                  | Maintainability concerns, minor improvements |
+| 🔵    | Low      | ✓                  | Style issues, documentation improvements     |
 
 ## Operating Modes
 
@@ -349,7 +158,7 @@ graph TB
 ```yaml
 agent:
   mode: yolo
-  auto_fix:
+  review:
     require_tests_passing: true # Safety check
 ```
 
@@ -379,6 +188,79 @@ Override the default mode using PR labels:
 - `agent:skip` - Skip automated review
 - `agent:review-only` - Review but don't auto-fix
 
+## Using the Agent
+
+### Review-Only Mode
+
+Disable auto-fix and only get review comments:
+
+```yaml
+review:
+  auto_fix: false
+```
+
+### Configuring Severity Threshold
+
+Only auto-fix issues at or below a certain severity:
+
+```yaml
+review:
+  severity_threshold: low # Only auto-fix Low severity issues
+```
+
+### Excluding Files from Review
+
+Skip generated files, tests, or documentation:
+
+```yaml
+review:
+  ignore_paths:
+    - "*.md"
+    - "docs/**"
+    - "vendor/**"
+    - "node_modules/**"
+    - "*.test.js"
+    - "**/*_test.go"
+```
+
+### Waiting for CI/CD
+
+Let tests pass before reviewing:
+
+```yaml
+webhooks:
+  wait_for_ci: true
+  triggers:
+    - pull_request.opened
+    - check_suite.completed
+```
+
+### Validation Loop
+
+The agent validates fixes before applying them:
+
+```yaml
+validation:
+  enabled: true
+  max_fix_attempts: 3
+  checks:
+    - syntax
+    - linting
+    - formatting
+    - security
+  timeout_seconds: 30
+```
+
+Each fix attempt goes through:
+
+1. Syntax checking (language-specific parsers)
+2. Linting (golangci-lint, flake8, eslint)
+3. Formatting (gofmt, black, prettier)
+4. Security scanning
+5. Issue verification
+
+If validation fails, the agent retries (up to `max_fix_attempts` times).
+
 ## Language Support
 
 ### Supported Languages
@@ -401,8 +283,7 @@ The agent supports the following languages with full analysis:
 
 #### JavaScript/TypeScript
 
-- **Linters**: eslint, tslint
-- **Formatters**: prettier
+- **Linters**: eslint, prettier
 - **Frameworks**: React, Vue, Angular detection
 - **Security**: XSS, prototype pollution, dependency vulnerabilities
 
@@ -457,6 +338,8 @@ languages:
 
    ```bash
    docker logs github-code-agent
+   # or
+   kubectl logs -f deployment/agentfield-control-plane -n agentfield
    ```
 
 3. **Verify configuration:**
@@ -643,7 +526,7 @@ Yes! The agent supports any OpenAI-compatible API:
 
 ```bash
 # OpenAI
-OPENOPENAI_API_KEY=sk-proj-...
+OPENAI_API_KEY=sk-proj-...
 AI_MODEL=gpt-4o
 
 # Anthropic Claude (via OpenRouter)
@@ -680,7 +563,7 @@ webhooks:
 
 Yes! Configure per-directory:
 
-````yaml
+```yaml
 # .github/code-agent.yml
 review:
   ignore_paths:
@@ -689,27 +572,8 @@ review:
 # service-b/.code-agent.yml (override)
 standards:
   coding:
-    max_line_length: 120es a mistake?
-
-1. **Reject the fix PR** (Safe mode) or **revert the commit** (YOLO mode)
-2. **Add feedback** as a PR comment (future enhancement: learning from feedback)
-3. **Adjust configuration** to prevent similar issues
-
-### Can it work with monorepos?
-
-Yes! Configure per-directory:
-
-```yaml
-# .github/code-agent.yml
-review:
-  ignore_paths:
-    - "service-a/**"  # Exclude specific services
-
-# service-b/.code-agent.yml (override)
-standards:
-  coding:
     max_line_length: 120  # Different standard for this service
-````
+```
 
 ### How do I update the agent?
 
@@ -725,10 +589,10 @@ For major updates, review the CHANGELOG for breaking changes.
 
 ## Getting Help
 
-- **Issues**: <https://github.com/yourorg/github-code-agent/issues>
-- **Discussions**: <https://github.com/yourorg/github-code-agent/discussions>
-- **Documentation**: <https://github.com/yourorg/github-code-agent/tree/main/docs>
-- **Email**: <support@yourorg.com>
+- **Issues**: <https://github.com/yongchenglow/af-code-agent/issues>
+- **Discussions**: <https://github.com/yongchenglow/af-code-agent/discussions>
+- **Documentation**: See `docs/` directory
+- **AgentField**: <https://www.agentfield.ai>
 
 ## Contributing
 

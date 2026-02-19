@@ -1,44 +1,38 @@
 # Deployment Guide
 
-This guide explains how to deploy the GitHub Code Agent using GitHub Actions and Helm to Kubernetes.
+This guide explains how to deploy the GitHub Code Review Agent to Kubernetes using Helm.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
 - [GitHub Secrets Configuration](#github-secrets-configuration)
-- [Workflows](#workflows)
 - [Helm Charts](#helm-charts)
 - [Deployment Process](#deployment-process)
+- [Verification](#verification)
 - [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-The deployment infrastructure consists of:
+The deployment uses a distributed architecture powered by AgentField:
 
 - **Namespace**: `agentfield`
-- **Control Plane**: Deployed as `agentfield-control-plane` (1-2 replicas)
-- **Agent Workers**: Deployed as `agentfield-agent` (3-10 replicas, autoscaling)
-- **Production URL**: <https://agentfield.yongchenglow.com>
+- **Control Plane**: 1-2 replicas, handles webhooks and orchestration
+- **Agent Workers**: 3-10 replicas with autoscaling, executes code reviews
+- **Production URL**: https://agentfield.yongchenglow.com
 
 ### Architecture
 
-The system uses a distributed architecture powered by AgentField:
-
 ```mermaid
 graph TB
-    subgraph "Control Plane (1-2 replicas)"
-        CP[Control Plane<br/>Port 8001]
-        CP1[Webhook Handling]
-        CP2[Task Orchestration]
-        CP3[HTTP API]
+    subgraph "Control Plane"
+        CP[Control Plane<br/>Port 8001<br/>Webhook Handling<br/>Task Orchestration]
     end
 
-    subgraph "Agent Workers (3-10 replicas)"
+    subgraph "Agent Workers"
         AW1[Code Review Execution]
         AW2[AI-Powered Analysis]
         AW3[Fix Generation]
-        AW4[Auto-scales on CPU/Memory]
     end
 
     CP -->|AgentField SDK| AW1
@@ -49,7 +43,6 @@ graph TB
     style AW1 fill:#fff4e1
     style AW2 fill:#fff4e1
     style AW3 fill:#fff4e1
-    style AW4 fill:#fff4e1
 ```
 
 ## Prerequisites
@@ -59,87 +52,36 @@ graph TB
 3. GitHub Container Registry (GHCR) access
 4. Cloudflare account with:
    - Tunnel configured
-   - DNS zone for yongchenglow.com
+   - DNS zone
    - API token with DNS and Tunnel edit permissions
 
 ## GitHub Secrets Configuration
 
-Configure the following secrets in your GitHub repository settings:
+Configure the following secrets in your GitHub repository settings (**Settings → Secrets and variables → Actions**):
 
 ### Required Secrets
 
-#### Production Deployment
+| Secret Name                | Description                                      | How to Obtain                                    |
+| -------------------------- | ------------------------------------------------ | ------------------------------------------------ |
+| `KUBECONFIG_PROD`          | Base64-encoded kubeconfig for production cluster | `cat ~/.kube/config \| base64 \| pbcopy`         |
+| `CLOUDFLARE_API_TOKEN`     | Cloudflare API token with DNS & Tunnel permissions | Cloudflare Dashboard → API Tokens               |
+| `CLOUDFLARE_ACCOUNT_ID`    | Your Cloudflare account ID                       | Cloudflare Dashboard                             |
+| `CLOUDFLARE_TUNNEL_ID`     | Your Cloudflare tunnel ID                        | Cloudflare Zero Trust → Access → Tunnels         |
 
-- `KUBECONFIG_PROD`: Base64-encoded kubeconfig file for production cluster
-
-  ```bash
-  cat ~/.kube/config | base64 | pbcopy
-  ```
-
-- `CLOUDFLARE_API_TOKEN`: Cloudflare API token with permissions:
-  - Zone:DNS:Edit
-  - Account:Cloudflare Tunnel:Edit
-
-- `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare account ID
-
-- `CLOUDFLARE_TUNNEL_ID`: Your Cloudflare tunnel ID
-
-### Container Registry
-
-The workflows use `GITHUB_TOKEN` which is automatically provided by GitHub Actions.
-
-### Creating GHCR Secret in Kubernetes
+### Container Registry Secret
 
 Before deploying, create a secret for pulling images from GitHub Container Registry:
 
 ```bash
-# Create the secret in the default namespace first
 kubectl create secret docker-registry ghcr-secret \
   --docker-server=ghcr.io \
   --docker-username=YOUR_GITHUB_USERNAME \
   --docker-password=YOUR_GITHUB_PAT \
   --docker-email=YOUR_EMAIL \
   -n default
-
-# The workflow will copy it to the agentfield namespace
 ```
 
-## Workflows
-
-### CI Workflow (`.github/workflows/ci.yml`)
-
-Triggered on:
-
-- Push to `main` or `develop` branches
-- Pull requests to `main` or `develop` branches
-
-Workflow steps:
-
-1. **Build & Test**: Runs Go tests and builds the application
-2. **Docker Build & Push**: Creates multi-arch Docker image and pushes to GHCR
-3. **Deploy to Production**: Deploys to production when pushing to `main` branch
-
-### Reusable Workflows
-
-#### `reusable-build.yml`
-
-- Sets up Go environment
-- Caches dependencies
-- Runs tests and linting
-- Builds the application
-
-#### `reusable-docker.yml`
-
-- Builds multi-architecture Docker images (amd64, arm64)
-- Pushes to GitHub Container Registry
-- Uses Docker layer caching for faster builds
-
-#### `production-deploy.yml`
-
-- Deploys using Helm
-- Configures Cloudflare Tunnel routes
-- Creates/updates DNS records
-- Verifies deployment health
+The deployment workflow will copy this secret to the `agentfield` namespace.
 
 ## Helm Charts
 
@@ -150,26 +92,22 @@ helm/agentfield/
 ├── Chart.yaml                    # Chart metadata
 ├── values.yaml                   # Default values
 ├── values-production.yaml        # Production overrides
-├── README.md                     # Chart documentation
 └── templates/
-    ├── _helpers.tpl             # Template helpers
     ├── deployment.yaml          # Control plane deployment
     ├── agent-deployment.yaml    # Agent worker deployment
     ├── service.yaml             # Control plane service
     ├── serviceaccount.yaml      # ServiceAccount manifest
     ├── configmap.yaml           # ConfigMap manifest
-    ├── hpa.yaml                 # Control plane HPA
-    ├── agent-hpa.yaml           # Agent worker HPA
-    └── NOTES.txt               # Post-install notes
+    └── hpa.yaml                 # HorizontalPodAutoscaler
 ```
 
-### Values Configuration
+### Configuration
 
-#### Production (`values-production.yaml`)
+#### Production Settings (`values-production.yaml`)
 
 **Control Plane:**
 
-- 1 replica (with autoscaling up to 2)
+- 1 replica (autoscales to 2)
 - 500m CPU / 512Mi memory (requests)
 - 1 CPU / 1Gi memory (limits)
 - NodePort: 30007
@@ -177,62 +115,35 @@ helm/agentfield/
 
 **Agent Workers:**
 
-- 3 replicas (with autoscaling up to 10)
+- 3 replicas (autoscales to 10)
 - 1 CPU / 1Gi memory (requests)
 - 2 CPU / 2Gi memory (limits)
-- Auto-scales at 70% CPU / 75% memory
-
-### Environment Variables
-
-Configure application settings via the `env` section in values files:
-
-```yaml
-controlPlane:
-  env:
-    - name: AGENTFIELD_URL
-      value: "http://agentfield-control-plane:8001"
-    - name: PORT
-      value: "8001"
-    - name: ENVIRONMENT
-      value: "production"
-```
+- Autoscaling: 70% CPU / 75% memory threshold
 
 ### Secrets Management
 
-**CRITICAL**: Create the `agentfield-secrets` secret BEFORE deploying the Helm chart.
-
-#### Create from .env file (Recommended)
+**CRITICAL**: Create the `agentfield-secrets` secret BEFORE deploying:
 
 ```bash
-# Navigate to the helm chart directory
 cd helm/agentfield
 
-# Create secret from your .env file
+# Option 1: Create from .env file
 kubectl create secret generic agentfield-secrets \
   --from-env-file=../../.env \
   -n agentfield
+
+# Option 2: Create from template
+cp secret-example.yaml secret.yaml
+# Edit secret.yaml with your values
+kubectl apply -f secret.yaml
+rm secret.yaml  # Clean up!
 ```
 
-#### Create from secret template
-
-```bash
-# Copy and edit the template
-cp helm/agentfield/secret-example.yaml helm/agentfield/secret.yaml
-vim helm/agentfield/secret.yaml
-
-# Apply the secret
-kubectl apply -f helm/agentfield/secret.yaml
-
-# Clean up (important!)
-rm helm/agentfield/secret.yaml
-```
-
-#### Required Secret Keys
-
-The secret must contain these environment variables from `.env.example`:
+**Required Secret Keys:**
 
 - `AGENTFIELD_URL`
-- `GITHUB_TOKEN`
+- `GITHUB_APP_ID`
+- `GITHUB_PRIVATE_KEY`
 - `GITHUB_WEBHOOK_SECRET`
 - `OPENAI_API_KEY`
 - `AI_BASE_URL`
@@ -244,9 +155,9 @@ See `helm/agentfield/secret-example.yaml` for the complete template.
 
 ## Deployment Process
 
-### Automatic Deployment
+### Automatic Deployment (Recommended)
 
-**Push to main branch** → triggers production deployment
+Push to the `main` branch to trigger automatic deployment:
 
 ```bash
 git checkout main
@@ -255,11 +166,17 @@ git commit -m "Your changes"
 git push origin main
 ```
 
+GitHub Actions will:
+
+1. Build and test the code
+2. Create multi-arch Docker image
+3. Push to GitHub Container Registry
+4. Deploy to Kubernetes using Helm
+5. Configure Cloudflare DNS and Tunnel
+
 ### Manual Deployment
 
-#### Using Helm directly
-
-**Production:**
+#### Using Helm
 
 ```bash
 export IMAGE_TAG="main-abc123def456"
@@ -272,36 +189,184 @@ helm upgrade --install agentfield-control-plane ./helm/agentfield \
   --wait
 ```
 
-### Verify Deployment
+#### Using kubectl
+
+```bash
+# Create namespace
+kubectl create namespace agentfield
+
+# Create secrets
+kubectl create secret generic agentfield-secrets \
+  --from-literal=GITHUB_APP_ID=123456 \
+  --from-literal=GITHUB_PRIVATE_KEY="-----BEGIN..." \
+  --from-literal=GITHUB_WEBHOOK_SECRET=your-secret \
+  --from-literal=OPENAI_API_KEY=sk-your-key \
+  -n agentfield
+
+# Deploy with Helm
+helm install agentfield-control-plane ./helm/agentfield \
+  --namespace agentfield \
+  -f ./helm/agentfield/values-production.yaml
+```
+
+## Verification
+
+### Check Deployment Status
 
 ```bash
 # Check all pods
 kubectl get pods -n agentfield
 
-# Check control plane pods
+# Check control plane
 kubectl get pods -l app.kubernetes.io/component=control-plane -n agentfield
 
-# Check agent worker pods
+# Check agent workers
 kubectl get pods -l app.kubernetes.io/component=agent -n agentfield
 
 # Check services
 kubectl get svc -n agentfield
 
-# View control plane logs
-kubectl logs -f deployment/agentfield-control-plane -n agentfield
-
-# View agent worker logs
-kubectl logs -f deployment/agentfield-agent -n agentfield
-
-# Check deployment status
-kubectl rollout status deployment/agentfield-control-plane -n agentfield
-kubectl rollout status deployment/agentfield-agent -n agentfield
-
-# Check autoscaling status
+# Check HPA status
 kubectl get hpa -n agentfield
 ```
 
-## Deployment Architecture
+### View Logs
+
+```bash
+# Control plane logs
+kubectl logs -f deployment/agentfield-control-plane -n agentfield
+
+# Agent worker logs
+kubectl logs -f deployment/agentfield-agent -n agentfield
+
+# Last 100 lines
+kubectl logs --tail=100 deployment/agentfield-control-plane -n agentfield
+```
+
+### Test Webhook Endpoint
+
+```bash
+# Port forward
+kubectl port-forward svc/agentfield-control-plane 8001:8001 -n agentfield
+
+# Test in another terminal
+curl -X POST http://localhost:8001/webhook
+```
+
+### Verify Cloudflare Integration
+
+After deployment, verify:
+
+1. DNS record exists: `agentfield.yongchenglow.com`
+2. Tunnel is routing traffic
+3. HTTPS is working: `curl https://agentfield.yongchenglow.com/health`
+
+## Troubleshooting
+
+### Pods Not Starting
+
+```bash
+# Describe pod for events
+kubectl describe pod -l app.kubernetes.io/name=agentfield -n agentfield
+
+# Check logs
+kubectl logs -l app.kubernetes.io/name=agentfield -n agentfield
+```
+
+### Image Pull Errors
+
+```bash
+# Verify secret exists
+kubectl get secret ghcr-secret -n agentfield
+
+# If missing, copy from default namespace
+kubectl get secret ghcr-secret -n default -o yaml | \
+  sed 's/namespace: default/namespace: agentfield/' | \
+  kubectl apply -f -
+```
+
+### Pod Crashes or CrashLoopBackOff
+
+```bash
+# Check pod logs
+kubectl logs -f deployment/agentfield-control-plane -n agentfield
+
+# Check resource usage
+kubectl top pods -n agentfield
+
+# Describe pod for events
+kubectl describe pod -l app.kubernetes.io/name=agentfield -n agentfield
+```
+
+### Cloudflare Issues
+
+1. Verify API token has correct permissions:
+   - Zone:DNS:Edit
+   - Account:Cloudflare Tunnel:Edit
+
+2. Check tunnel is running:
+   ```bash
+   cloudflared tunnel info YOUR_TUNNEL_ID
+   ```
+
+3. Verify DNS records in Cloudflare dashboard
+
+### Rollback Deployment
+
+```bash
+# View rollout history
+kubectl rollout history deployment/agentfield-control-plane -n agentfield
+
+# Rollback to previous version
+kubectl rollout undo deployment/agentfield-control-plane -n agentfield
+
+# Rollback to specific revision
+kubectl rollout undo deployment/agentfield-control-plane --to-revision=2 -n agentfield
+```
+
+## Monitoring
+
+### Resource Usage
+
+```bash
+# Check pod resource usage
+kubectl top pods -n agentfield
+
+# Check node resource usage
+kubectl top nodes
+```
+
+### Horizontal Pod Autoscaling
+
+```bash
+# Check HPA status
+kubectl get hpa -n agentfield
+
+# Describe HPA
+kubectl describe hpa agentfield-control-plane -n agentfield
+```
+
+### Application Logs
+
+```bash
+# Follow logs
+kubectl logs -f deployment/agentfield-control-plane -n agentfield
+
+# Logs from previous pod (if crashed)
+kubectl logs --previous deployment/agentfield-control-plane -n agentfield
+```
+
+## Security Best Practices
+
+1. **Never commit secrets** to the repository
+2. **Use Kubernetes secrets** for sensitive data
+3. **Enable RBAC** in your cluster
+4. **Use least privilege** service accounts
+5. **Regularly rotate** credentials and keys
+6. **Enable network policies** for pod-to-pod communication
+7. **Use sealed secrets** or external secret managers for production
+
+## Architecture Diagram
 
 ```mermaid
 graph TB
@@ -318,159 +383,30 @@ graph TB
 
     subgraph "Kubernetes Cluster"
         subgraph "Namespace: agentfield"
-            CP[Control Plane Deployment<br/>agentfield-control-plane<br/>Replicas: 1-2<br/>Port: 8001<br/>Resources: 500m CPU / 512Mi RAM]
-
-            AW[Agent Workers Deployment<br/>agentfield-agent<br/>Replicas: 3-10 autoscaling<br/>Resources: 1 CPU / 1Gi RAM]
-
-            SVC[Service: NodePort 30007<br/>Exposes Control Plane]
-
-            CP -.->|AgentField SDK| AW
-            CP --> SVC
+            CP[Control Plane<br/>1-2 replicas<br/>Port: 8001]
+            AW[Agent Workers<br/>3-10 replicas<br/>Autoscaling]
+            SVC[Service<br/>NodePort 30007]
         end
     end
 
     subgraph "Cloudflare"
-        TUNNEL[Cloudflare Tunnel<br/>agentfield.yongchenglow.com]
+        TUNNEL[Cloudflare Tunnel + DNS]
     end
 
     DEPLOY -->|Push Image| GHCR
     GHCR -->|Pull Image| CP
     GHCR -->|Pull Image| AW
-    SVC -->|localhost:30007| TUNNEL
-    TUNNEL -->|HTTPS| INTERNET[Public Internet]
+    SVC --> TUNNEL
+    TUNNEL --> PUBLIC[Public HTTPS Access]
 
     style BUILD fill:#e1f5ff
     style DOCKER fill:#e1f5ff
     style DEPLOY fill:#e1f5ff
-    style GHCR fill:#f0f0f0
     style CP fill:#d4edda
     style AW fill:#fff3cd
     style SVC fill:#d1ecf1
     style TUNNEL fill:#f8d7da
 ```
-
-## Troubleshooting
-
-### Deployment Fails
-
-1. **Check workflow logs** in GitHub Actions tab
-2. **Verify secrets** are correctly configured
-3. **Check Kubernetes cluster** access:
-
-   ```bash
-   kubectl get nodes
-   kubectl get ns
-   ```
-
-### Image Pull Errors
-
-If pods fail to pull images:
-
-```bash
-# Verify secret exists
-kubectl get secret ghcr-secret -n agentfield
-
-# If not, create it
-kubectl create secret docker-registry ghcr-secret \
-  --docker-server=ghcr.io \
-  --docker-username=YOUR_GITHUB_USERNAME \
-  --docker-password=YOUR_GITHUB_PAT \
-  -n agentfield
-```
-
-### Pod Crashes or CrashLoopBackOff
-
-```bash
-# Check pod logs
-kubectl logs -f deployment/agentfield-control-plane -n agentfield
-
-# Describe pod for events
-kubectl describe pod -l app.kubernetes.io/name=agentfield -n agentfield
-
-# Check resource limits
-kubectl top pods -n agentfield
-```
-
-### DNS/Cloudflare Issues
-
-1. Verify Cloudflare API token has correct permissions
-2. Check tunnel is running:
-
-   ```bash
-   cloudflared tunnel info YOUR_TUNNEL_ID
-   ```
-
-3. Verify DNS records in Cloudflare dashboard
-
-### Webhook Endpoint Testing
-
-Test the webhook endpoint to verify deployment:
-
-```bash
-# Test locally (if port-forwarded)
-kubectl port-forward svc/agentfield-control-plane 8001:8001 -n agentfield
-curl -X POST http://localhost:8001/webhook
-```
-
-### Rollback Deployment
-
-If a deployment fails, rollback to previous version:
-
-```bash
-# View rollout history
-kubectl rollout history deployment/agentfield-control-plane -n agentfield
-
-# Rollback to previous version
-kubectl rollout undo deployment/agentfield-control-plane -n agentfield
-
-# Rollback to specific revision
-kubectl rollout undo deployment/agentfield-control-plane --to-revision=2 -n agentfield
-```
-
-## Monitoring
-
-### View Application Logs
-
-```bash
-# Follow logs
-kubectl logs -f deployment/agentfield-control-plane -n agentfield
-
-# Last 100 lines
-kubectl logs --tail=100 deployment/agentfield-control-plane -n agentfield
-
-# Logs from previous pod (if crashed)
-kubectl logs --previous deployment/agentfield-control-plane -n agentfield
-```
-
-### Resource Usage
-
-```bash
-# Check pod resource usage
-kubectl top pods -n agentfield
-
-# Check node resource usage
-kubectl top nodes
-```
-
-### Horizontal Pod Autoscaling (Production)
-
-```bash
-# Check HPA status
-kubectl get hpa -n agentfield
-
-# Describe HPA
-kubectl describe hpa agentfield-control-plane -n agentfield
-```
-
-## Security Best Practices
-
-1. **Never commit secrets** to the repository
-2. **Use Kubernetes secrets** for sensitive data
-3. **Enable RBAC** in your cluster
-4. **Use least privilege** service accounts
-5. **Regularly update** dependencies and base images
-6. **Enable network policies** for pod-to-pod communication
-7. **Use sealed secrets** or external secret managers for production
 
 ## Support
 
@@ -479,4 +415,5 @@ For issues or questions:
 1. Check the [troubleshooting section](#troubleshooting)
 2. Review workflow logs in GitHub Actions
 3. Check Kubernetes pod logs and events
-4. Consult the main [README.md](../README.md)
+4. Consult the [README.md](../README.md)
+5. See [USER_GUIDE.md](USER_GUIDE.md) for usage information

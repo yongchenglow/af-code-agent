@@ -1,596 +1,253 @@
 # GitHub Code Review Agent
 
-An autonomous GitHub code review agent built with Go and [AgentField](https://www.agentfield.ai) that automatically reviews pull requests, identifies issues, and applies fixes using AI.
+An autonomous GitHub code review agent built with Go and AgentField that automatically reviews pull requests, identifies issues, and applies fixes using AI.
 
 [![Status](https://img.shields.io/badge/status-production%20ready-success)](https://github.com)
 [![Go](https://img.shields.io/badge/go-1.24-blue)](https://go.dev/)
-[![Tests](https://img.shields.io/badge/tests-58%20functions-success)](https://github.com)
+[![Tests](https://img.shields.io/badge/tests-passing-success)](https://github.com)
 [![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-blue)](LICENSE)
-[![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/yongchenglow)
 
-## Table of Contents
+## Quick Links
 
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Project Structure](#project-structure)
-- [Setup](#setup)
-- [Configuration](#configuration)
-- [Operating Modes](#operating-modes)
-- [Workflow](#workflow)
-- [Development](#development)
-- [Performance](#performance)
-- [Deployment](#deployment)
-- [Documentation](#documentation)
+- **📖 [Quick Start Guide](docs/QUICK_START.md)** - Get started in 5 minutes
+- **📖 [User Guide](docs/USER_GUIDE.md)** - How to use the agent
+- **📖 [GitHub App Setup](docs/GITHUB_APP_SETUP.md)** - Configure GitHub App
+- **📖 [Configuration Reference](docs/CONFIGURATION_REFERENCE.md)** - All options
+- **📖 [Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment
+- **📖 [API Reference](docs/API_REFERENCE.md)** - Technical documentation
 
 ## Overview
 
-This agent operates autonomously to:
+The GitHub Code Review Agent autonomously:
 
-1. 🔍 **Review code** - AI-powered comprehensive code analysis using DeepSeek
-2. 🛡️ **Detect vulnerabilities** - Security scanning (OWASP Top 10)
-3. 📏 **Validate standards** - Enforce coding standards and best practices
-4. 🔧 **Generate fixes** - Automatically fix identified issues with validation loop
-5. 💬 **Post reviews** - Comment on PRs with detailed feedback
-6. ✅ **Apply fixes** - Push fixes directly or create fix PRs for human review
-
-### Operating Modes
-
-- **Safe Mode** (default): Creates a new PR with fixes for human review
-- **YOLO Mode**: Directly pushes fixes to the source branch
+1. 🔍 **Reviews code** - AI-powered analysis using DeepSeek
+2. 🛡️ **Detects vulnerabilities** - OWASP Top 10 security scanning
+3. 📏 **Validates standards** - Enforces coding conventions
+4. 🔧 **Generates fixes** - Auto-fixes with validation loop
+5. 💬 **Posts reviews** - Detailed PR comments with severity levels
+6. ✅ **Applies fixes** - Direct push (YOLO) or PR (Safe mode)
 
 ## Features
 
-### ✅ AI-Powered Code Review
+### AI-Powered Code Review
 
-- **Comprehensive Analysis**: Bugs, security issues, performance problems, maintainability concerns
-- **DeepSeek Integration**: Cost-effective AI model (~$0.14/1M tokens)
-- **Structured Output**: Categorized issues with severity levels
-- **Smart Filtering**: Skips binary files, vendor directories, and node_modules
+- Comprehensive analysis: bugs, security, performance, maintainability
+- DeepSeek integration (~$0.14/1M tokens input, ~$0.28/1M output)
+- Structured output with severity categorization
+- Smart filtering: skips binary files, vendor, node_modules
 
-### ✅ Security Vulnerability Detection
+### Security Scanning
 
-- **OWASP Top 10 Coverage**: SQL injection, XSS, authentication flaws
-- **Secret Detection**: API keys, passwords, AWS credentials, GitHub tokens
-- **CWE Classification**: Industry-standard vulnerability categorization
-- **Remediation Suggestions**: Actionable fixes for security issues
+- OWASP Top 10 vulnerability detection
+- Secret detection (API keys, passwords, credentials)
+- CWE classification
+- Actionable remediation suggestions
 
-### ✅ Coding Standards Validation
+### Standards Validation
 
-- **Configurable Rules**: Line length, function length, naming conventions
-- **Multi-Language Support**: Go, Python, JavaScript/TypeScript
-- **Documentation Checks**: Missing docstrings, type hints, comments
-- **Auto-fixable**: Many violations can be automatically corrected
+- Configurable rules: line length, function length, naming
+- Multi-language support: Go, Python, JavaScript/TypeScript
+- Documentation checks: docstrings, type hints, comments
+- Auto-fixable violations
 
-### ✅ Automated Fix Generation
+### Automated Fix Generation
 
-- **Validation Loop**: Max 3 attempts with feedback per fix
-- **Comprehensive Validation**:
-  - Syntax checking (language-specific parsers)
+- Validation loop with max 3 attempts per fix
+- Comprehensive validation:
+  - Syntax checking (language-specific)
   - Linting (golangci-lint, flake8, eslint)
   - Formatting (gofmt, black, prettier)
   - Security scanning
   - Issue verification
-- **Smart Retry**: Previous validation errors inform next attempt
-- **Bounded Execution**: Prevents infinite loops with max attempts
+- Smart retry with error feedback
+- Bounded execution prevents infinite loops
 
-### ✅ Git Operations
+### Operating Modes
 
-- **Branch Management**: Create, checkout, and manage branches
-- **Patch Application**: Apply code fixes with proper commits
-- **PR Creation**: Automated pull request generation with descriptions
-- **Comment Linking**: Updates review comments with fix links
-
-### ✅ GitHub Integration
-
-- **Review Comments**: Inline comments with emoji severity indicators
-- **Summary Comments**: Issue breakdown and statistics
-- **Comment Updates**: Links to fix commits or PRs
-- **Approval Reviews**: Automatically approves clean code
-
-### ✅ Performance Optimizations
-
-- **Parallel Execution**: 60% faster review times
-- **Smart Caching**: 35% cost reduction, 40% fewer API calls
-- **Rate Limit Handling**: Automatic backoff and adaptive limiting
-- **CI/CD Awareness**: Waits for pipeline completion before reviewing
+| Mode  | Description | Best For |
+| ----- | ----------- | -------- |
+| **Safe** (default) | Creates PR with fixes for human review | Production repos, teams new to agent |
+| **YOLO** | Pushes fixes directly to PR branch | Personal repos, trusted codebases |
 
 ## Architecture
 
 ```mermaid
-graph TB
-    A[GitHub Webhook] -->|PR Event| B[Webhook Handler]
-    B --> C{Wait for CI?}
-    C -->|Yes| D[Check CI Status]
-    C -->|No| E[Analyze PR]
-    D -->|Complete| E
-    E --> F[Code Analyzer]
-    F --> G[Review Code]
-    F --> H[Validate Standards]
-    G --> I[Prioritize Issues]
-    H --> I
-    I --> J[Generate Fixes]
-    J --> K{Validate Fix}
-    K -->|Invalid| L[Retry with Errors]
-    L --> J
-    K -->|Valid| M{Mode?}
-    M -->|Safe| N[Create Fix PR]
-    M -->|YOLO| O[Push to Branch]
-    N --> P[Update Comments]
-    O --> P
-    P --> Q[Post Summary]
+flowchart TB
+    A[GitHub Webhook] --> B[Webhook Handler<br/>Validates signature, routes events]
+    B --> C[Code Analyzer<br/>Analyzes PR files, metrics]
+    C --> D[Reviewer]
+    C --> E[Standards<br/>AI + deterministic validation]
+    D --> F[Fixer<br/>Generates & validates fixes]
+    E --> F
+    F --> G[GitOps<br/>Branch, commit, push, PR]
+    
+    style A fill:#e1f5ff
+    style B fill:#fff3cd
+    style C fill:#e1f5ff
+    style D fill:#d4edda
+    style E fill:#d4edda
+    style F fill:#f8d7da
+    style G fill:#d1ecf1
 ```
 
 ### Technology Stack
 
-| Component      | Technology                   |
-| -------------- | ---------------------------- |
-| Language       | Go 1.24.13                   |
-| Framework      | AgentField SDK               |
-| AI Model       | DeepSeek Chat                |
-| GitHub API     | google/go-github/v57         |
-| Configuration  | YAML + Environment Variables |
-| Git Operations | Command-line git             |
-| Testing        | Go testing + Mocks           |
-| Deployment     | Docker + Kubernetes (Helm)   |
-
-### Agent Reasoners
-
-The system uses AgentField's reasoner pattern where each feature registers callable AI decision-makers:
-
-```mermaid
-graph LR
-    A[Webhook] --> B[Analyzer]
-    B --> C[Reviewer]
-    B --> D[Standards]
-    C --> E[Fixer]
-    D --> E
-    E --> F[Validator]
-    F -->|Invalid| E
-    F -->|Valid| G[GitOps]
-    G --> H[Comment Poster]
-```
-
-**Registered Reasoners:**
-
-- `webhook.handle_webhook` - Process GitHub webhooks
-- `webhook.handle_pr_opened` - PR workflow orchestration
-- `analyzer.analyze_pr` - Analyze PR files
-- `reviewer.review_code` - AI-powered code review
-- `reviewer.detect_security_issues` - Security vulnerability detection
-- `standards.validate_standards` - Coding standards validation
-- `fixer.generate_fixes_with_validation` - Generate and validate fixes (retry loop)
-- `fixer.validate_fix` - Validate individual fix
-- `gitops.create_branch` - Create Git branch
-- `gitops.apply_patches` - Apply code patches
-- `gitops.create_pull_request` - Create GitHub PR
-- `gitops.add_review_comment` - Add review comment
-- `gitops.update_review_comment` - Update existing comment
-- `gitops.post_review_with_fixes` - Orchestrate complete workflow
+| Component       | Technology                |
+| --------------- | ------------------------- |
+| Language        | Go 1.24                   |
+| Framework       | AgentField SDK            |
+| AI Model        | DeepSeek Chat             |
+| GitHub API      | google/go-github          |
+| Configuration   | YAML + Environment Vars   |
+| Deployment      | Docker + Kubernetes/Helm  |
 
 ## Project Structure
 
 ```
-github-code-agent/
+af-code-agent/
 ├── cmd/
 │   └── agent/
-│       └── main.go                    # Entry point (104 lines)
-├── features/                          # Feature-based organization
+│       └── main.go                    # Entry point
+├── agents/                            # Feature-based agents
 │   ├── webhook/                       # GitHub webhook handling
-│   │   ├── webhook.go                # Main handler
-│   │   ├── webhook_test.go           # Unit tests
-│   │   ├── validator.go              # Signature validation
-│   │   ├── reasoners.go              # AgentField integration
-│   │   └── types.go                  # Event types
 │   ├── analyzer/                      # PR analysis
-│   │   ├── analyzer.go               # File analysis
-│   │   ├── analyzer_test.go          # Unit tests
-│   │   ├── reasoners.go              # AgentField integration
-│   │   └── types.go                  # Analysis types
 │   ├── reviewer/                      # AI code review
-│   │   ├── reviewer.go               # Review logic
-│   │   ├── reviewer_test.go          # Unit tests
-│   │   ├── prioritizer.go            # Issue prioritization
-│   │   ├── prioritizer_test.go       # Unit tests
-│   │   ├── comments.go               # GitHub comments
-│   │   ├── reasoners.go              # AgentField integration
-│   │   └── types.go                  # Review types
 │   ├── standards/                     # Standards validation
-│   │   ├── standards.go              # Validation rules
-│   │   ├── standards_test.go         # Unit tests
-│   │   ├── reasoners.go              # AgentField integration
-│   │   └── types.go                  # Violation types
 │   ├── fixer/                         # Fix generation
-│   │   ├── fixer.go                  # Fix generation with retry
-│   │   ├── fixer_test.go             # Unit tests
-│   │   ├── validator.go              # Validation engine
-│   │   ├── reasoners.go              # AgentField integration
-│   │   └── types.go                  # Patch types
 │   └── gitops/                        # Git operations
-│       ├── gitops.go                 # Branch, commit, push
-│       ├── gitops_test.go            # Unit tests
-│       ├── github.go                 # GitHub API wrapper
-│       ├── workflow.go               # Orchestration
-│       ├── reasoners.go              # AgentField integration
-│       └── types.go                  # Git operation types
 ├── pkg/
-│   ├── github/                        # GitHub API client
-│   │   ├── client.go
-│   │   └── client_test.go            # Unit tests
+│   ├── app/                           # Application bootstrap
 │   ├── config/                        # Configuration
-│   │   ├── config.go
-│   │   ├── config_test.go            # Unit tests
-│   │   └── types.go
-│   └── performance/                   # Performance optimizations
-│       ├── parallel.go               # Parallel execution
-│       ├── parallel_test.go          # Unit tests
-│       ├── cache.go                  # Caching system
-│       ├── cache_test.go             # Unit tests
-│       └── ratelimit.go              # Rate limiting
+│   ├── github/                        # GitHub API client
+│   ├── performance/                   # Caching, parallel exec
+│   ├── context/                       # Context management
+│   ├── constants/                     # Constants
+│   └── utils/                         # Utilities
 ├── helm/agentfield/                   # Kubernetes Helm chart
-│   ├── Chart.yaml                    # Helm chart metadata
-│   ├── values.yaml                   # Default values
-│   ├── values-production.yaml        # Production overrides
-│   ├── secret.yaml                   # Secrets configuration
-│   ├── secret-example.yaml           # Secrets template
-│   └── templates/
-│       ├── deployment.yaml           # Control plane deployment
-│       ├── service.yaml              # Kubernetes service
-│       ├── configmap.yaml            # Configuration
-│       ├── serviceaccount.yaml       # RBAC
-│       └── hpa.yaml                  # Auto-scaling
 ├── docs/                              # Documentation
-│   ├── USER_GUIDE.md                 # User guide
-│   ├── API_REFERENCE.md              # API documentation
-│   ├── CONFIGURATION_REFERENCE.md    # Config reference
-│   ├── DEPLOYMENT.md                 # Deployment guide
-│   └── QUICK_START.md                # Quick start guide
 ├── .github/
-│   ├── code-agent.yml                # Agent configuration
-│   └── workflows/                    # GitHub Actions
-│       └── ci.yml                    # CI/CD pipeline
-├── Dockerfile                         # Multi-stage Docker build
-├── Makefile                          # Build automation
-├── .env.example                       # Environment variables template
-├── go.mod                            # Go dependencies
-├── go.sum                            # Dependency checksums
-└── README.md                         # This file
+│   ├── code-agent.yml                 # Agent configuration
+│   └── workflows/                     # CI/CD pipelines
+├── Dockerfile                         # Multi-stage build
+├── Makefile                           # Build automation
+└── README.md                          # This file
 ```
 
-## Setup
+## Getting Started
 
 ### Prerequisites
 
 - Go 1.24 or higher
-- GitHub App credentials (App ID and Private Key)
-- AI API key (DeepSeek via OpenRouter, or any OpenAI-compatible API)
-- AgentField instance (cloud or self-hosted)
-- Git installed (for git operations)
-- Docker (optional, for containerized deployment)
-- Kubernetes cluster (optional, for production deployment)
+- GitHub App credentials (App ID, Private Key)
+- DeepSeek API key (or OpenAI-compatible API)
+- Git installed
+- Docker (optional)
+- Kubernetes (optional, for production)
 
-### Installation
+### Quick Start (Local Development)
 
-1. **Clone the repository:**
+1. **Clone and build:**
+
+   ```bash
+   git clone https://github.com/yongchenglow/af-code-agent.git
+   cd af-code-agent
+   go build -o github-code-agent ./cmd/agent
+   ```
+
+2. **Configure environment:**
+
+   ```bash
+   cp .env.example .env
+   # Edit .env with your credentials
+   ```
+
+3. **Set up GitHub App:**
+
+   See [GitHub App Setup Guide](docs/GITHUB_APP_SETUP.md)
+
+4. **Run the agent:**
+
+   ```bash
+   ./github-code-agent
+   ```
+
+5. **Test with ngrok:**
+
+   ```bash
+   ngrok http 8001
+   # Update GitHub App webhook URL with ngrok HTTPS URL
+   ```
+
+For detailed instructions, see [Quick Start Guide](docs/QUICK_START.md).
+
+## Configuration
+
+### Environment Variables (.env)
 
 ```bash
-git clone <repository-url>
-cd github-code-agent
-```
-
-1. **Install dependencies:**
-
-```bash
-go mod download
-```
-
-1. **Create `.env` file from template:**
-
-```bash
-cp .env.example .env
-```
-
-1. **Configure environment variables in `.env`:**
-
-```bash
-# AgentField Configuration
-AGENTFIELD_URL=https://your-agentfield-instance.com
-
 # GitHub App Configuration
 GITHUB_APP_ID=123456
-GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nYour_Private_Key_Here\n-----END RSA PRIVATE KEY-----"
-GITHUB_WEBHOOK_SECRET=your-webhook-secret
+GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+GITHUB_WEBHOOK_SECRET=your-secret
 
-# AI Configuration (DeepSeek via OpenRouter - Recommended)
-OPENAI_API_KEY=sk-or-v1-your-openrouter-api-key
+# AI Configuration
+OPENAI_API_KEY=your-deepseek-api-key
 AI_BASE_URL=https://api.deepseek.com
 AI_MODEL=deepseek-chat
 
 # Application Settings
-PORT=8001
 LOG_LEVEL=info
+PORT=8001
 ```
 
-**Note**: For detailed GitHub App setup instructions, see [GITHUB_APP_SETUP.md](GITHUB_APP_SETUP.md).
-
-1. **Configure agent behavior in `.github/code-agent.yml`**
-
-See [Configuration](#configuration) section for details.
-
-### GitHub App Setup
-
-This agent uses GitHub App authentication for enhanced security and better rate limits. To set up:
-
-1. Create a GitHub App at: https://github.com/settings/apps/new
-
-2. Configure the following permissions:
-   - **Contents**: Read & Write
-   - **Pull requests**: Read & Write
-   - **Checks**: Read & Write
-   - **Commit statuses**: Read & Write
-
-3. Subscribe to webhook events:
-   - Pull request
-   - Check suite
-
-4. Generate and download the private key
-
-5. Configure environment variables with your App ID and private key
-
-For detailed setup instructions, see [GITHUB_APP_SETUP.md](GITHUB_APP_SETUP.md).
-
-### AgentField Setup
-
-1. Sign up at [AgentField](https://www.agentfield.ai) or deploy your own instance
-2. Create a new agent/workspace
-3. Get your AgentField URL and API key
-4. Configure in your `.env` file
-
-## Configuration
-
-### Agent Configuration (`.github/code-agent.yml`)
-
-Place this file in each repository where you want the agent to operate:
+### Repository Configuration (.github/code-agent.yml)
 
 ```yaml
-# Agent mode
 agent:
   enabled: true
-  mode: safe # Options: safe, yolo
+  mode: safe # or "yolo"
 
-# Webhook triggers
-webhooks:
-  triggers:
-    - pull_request.opened
-    - pull_request.synchronize
-    - check_suite.completed
-  wait_for_ci: true # Wait for CI/CD before reviewing
-  debounce_seconds: 30 # Wait 30s for rapid commits to settle
-
-# Review settings
 review:
   auto_review: true
   auto_fix: true
-  severity_threshold: medium # Only show medium+ issues
-  ignore_paths:
-    - "*.md"
-    - "docs/**"
-    - "tests/fixtures/**"
+  severity_threshold: medium
 
-# Validation loop settings
+webhooks:
+  wait_for_ci: true
+  debounce_seconds: 30
+
 validation:
   enabled: true
-  max_fix_attempts: 3 # Max retry attempts per fix
+  max_fix_attempts: 3
   checks:
-    - syntax # Validate syntax
-    - linting # Run linters
-    - formatting # Check code formatting
-    - security # Security vulnerability scan
-  timeout_seconds: 30 # Timeout per validation attempt
-  auto_format: true # Automatically format code before validation
-
-# Coding standards
-standards:
-  coding:
-    max_line_length: 100
-    max_function_length: 50
-    max_complexity: 10
-    naming_conventions:
-      functions: snake_case
-      classes: PascalCase
-      constants: UPPER_SNAKE_CASE
-
-  documentation:
-    require_docstrings: true
-    docstring_style: google # google, numpy, sphinx
-    require_type_hints: true
-    require_module_docs: true
-
-  security:
-    check_dependencies: true
-    check_secrets: true
-    owasp_checks: true
-
-# Language-specific settings
-languages:
-  python:
-    linters:
-      - pylint
-      - black
-      - mypy
-    min_test_coverage: 80
-
-  javascript:
-    linters:
-      - eslint
-      - prettier
-    frameworks:
-      - react
-
-  go:
-    linters:
-      - golangci-lint
-      - gofmt
-    min_test_coverage: 80
-
-# AI model configuration
-ai:
-  provider: deepseek
-  model: deepseek-chat
-  temperature: 0.2
-  max_tokens: 4000
-
-# Notification settings
-notifications:
-  on_review_complete: true
-  on_fixes_applied: true
-  mention_author: true
+    - syntax
+    - linting
+    - formatting
+    - security
 ```
 
-## Operating Modes
+See [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) for all options.
 
-### Safe Mode (Recommended)
+## Usage
 
-Creates a new PR with fixes for human review before merging.
+### Example Review Comment
 
-**Workflow:**
+The agent posts comments with severity indicators:
 
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant GH as GitHub
-    participant Agent as Code Agent
+```
+🔴 Critical: Potential nil pointer dereference
 
-    Dev->>GH: Push to PR #123
-    GH->>Agent: Webhook Event
-    Agent->>Agent: Review Code
-    Agent->>GH: Post Review Comments
-    Agent->>Agent: Generate Fixes
-    Agent->>GH: Create Fix PR #124
-    Agent->>GH: Update Comments with PR Link
-    Agent->>GH: Post Summary
-    Dev->>GH: Review & Merge PR #124
+Details:
+The function `main` doesn't check if `user` is nil before accessing
+the `Name` field, which will cause a panic.
+
+Suggested fix:
+Add nil check: if user != nil { ... }
+
+Automated review by GitHub Code Agent
 ```
 
-**Benefits:**
-
-- Human review before merging fixes
-- Safer for critical codebases
-- Allows discussion on fixes
-- Easy to reject unwanted changes
-
-**Configuration:**
-
-```yaml
-agent:
-  mode: safe
-```
-
-### YOLO Mode
-
-Pushes fixes directly to the PR branch for fast iteration.
-
-**Workflow:**
-
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant GH as GitHub
-    participant Agent as Code Agent
-
-    Dev->>GH: Push to PR #123
-    GH->>Agent: Webhook Event
-    Agent->>Agent: Review Code
-    Agent->>GH: Post Review Comments
-    Agent->>Agent: Generate Fixes
-    Agent->>GH: Push Fixes to PR #123
-    Agent->>GH: Update Comments with Commit Links
-    GH->>GH: CI/CD Runs Again
-```
-
-**Benefits:**
-
-- Faster iteration cycles
-- No extra PR to manage
-- Automatic CI/CD re-run
-- Good for trusted repos with good tests
-
-**Configuration:**
-
-```yaml
-agent:
-  mode: yolo
-  review:
-    severity_threshold: high # Only auto-fix high+ issues
-    require_tests_passing: true
-```
-
-## Workflow
-
-### Complete Review + Fix Workflow
-
-```mermaid
-graph TB
-    A[PR Created/Updated] --> B{Wait for CI?}
-    B -->|Yes| C[Check Suite Completes]
-    B -->|No| D[Fetch PR Files]
-    C --> D
-    D --> E[Analyze Code]
-    E --> F[Run AI Review]
-    E --> G[Validate Standards]
-    F --> H[Prioritize Issues]
-    G --> H
-    H --> I[Post Review Comments]
-    I --> J{Auto-fix Enabled?}
-    J -->|No| K[Done]
-    J -->|Yes| L[Generate Fixes]
-    L --> M{Validate Fix}
-    M -->|Invalid Attempt 1| N[Regenerate with Errors]
-    N --> M
-    M -->|Invalid Attempt 2| N
-    M -->|Invalid Attempt 3| O[Skip Fix, Log Failure]
-    M -->|Valid| P{Mode?}
-    P -->|Safe| Q[Create Fix Branch]
-    P -->|YOLO| R[Apply to PR Branch]
-    Q --> S[Apply Patches]
-    R --> S
-    S --> T[Create Commit]
-    T --> U[Push to Remote]
-    U --> V{Mode?}
-    V -->|Safe| W[Create Fix PR]
-    V -->|YOLO| X[Get Commit SHA]
-    W --> Y[Update Comments with PR Link]
-    X --> Z[Update Comments with Commit Link]
-    Y --> AA[Post Summary]
-    Z --> AA
-    O --> AA
-    AA --> K
-```
-
-### Validation Loop Details
-
-Each fix attempt goes through comprehensive validation:
-
-```mermaid
-graph LR
-    A[Generate Fix] --> B{Syntax Valid?}
-    B -->|No| C[Return Errors]
-    B -->|Yes| D{Linting Pass?}
-    D -->|No| C
-    D -->|Yes| E{Formatted?}
-    E -->|No| C
-    E -->|Yes| F{Security OK?}
-    F -->|No| C
-    F -->|Yes| G{Addresses Issue?}
-    G -->|No| C
-    G -->|Yes| H[Valid Fix ✓]
-    C --> I{Attempt < 3?}
-    I -->|Yes| J[Retry with Context]
-    I -->|No| K[Skip Fix]
-    J --> A
-```
-
-### Issue Severity Levels
+### Severity Levels
 
 | Emoji | Severity | Auto-Fix           | Examples                                     |
 | ----- | -------- | ------------------ | -------------------------------------------- |
@@ -598,6 +255,13 @@ graph LR
 | 🟠    | High     | ✓                  | Bugs, performance issues, major code smells  |
 | 🟡    | Medium   | ✓                  | Maintainability concerns, minor improvements |
 | 🔵    | Low      | ✓                  | Style issues, documentation improvements     |
+
+### Control Per-PR with Labels
+
+- `agent:safe` - Force safe mode
+- `agent:yolo` - Force YOLO mode
+- `agent:skip` - Skip automated review
+- `agent:review-only` - Review but don't auto-fix
 
 ## Development
 
@@ -608,48 +272,34 @@ graph LR
 go test ./...
 
 # Run with coverage
-go test -cover ./features/...
+go test -cover ./agents/...
 
-# Run specific feature
-go test ./features/reviewer/...
+# Run specific agent
+go test ./agents/reviewer/...
 
 # Verbose output
-go test -v ./features/...
-
-# Note: Integration and E2E tests are provided as .example templates
-# Copy and customize them for your specific use case
-```
-
-**Test Status:**
-
-```
-✅ features/analyzer    - All tests passing
-✅ features/reviewer    - All tests passing
-✅ features/standards   - All tests passing
-❌ features/webhook     - Build failed (NewServer signature mismatch)
-✅ features/fixer       - All tests passing
-✅ features/gitops      - All tests passing
-✅ pkg/config          - All tests passing
-✅ pkg/github          - All tests passing
-✅ pkg/performance     - All tests passing
-------------------------------------------
-Total: 58 test functions (many with multiple sub-tests) across 11 test files
-Note: Webhook tests have compilation errors that need fixing
+go test -v ./agents/...
 ```
 
 ### Run Locally
 
 ```bash
-# Run with hot reload (using air)
-go install github.com/cosmtrek/air@latest
-air
-
-# Run directly
+# Direct run
 go run cmd/agent/main.go
 
-# Build and run
+# With hot reload
+go install github.com/cosmtrek/air@latest
+air
+```
+
+### Build
+
+```bash
+# Build binary
 go build -o github-code-agent cmd/agent/main.go
-./github-code-agent
+
+# Using Makefile
+make build
 ```
 
 ### Docker
@@ -660,306 +310,171 @@ docker build -t github-code-agent .
 
 # Run
 docker run -p 8001:8001 --env-file .env github-code-agent
-
-# Build with specific Go version
-docker build --build-arg GO_VERSION=1.24.13 -t github-code-agent .
 ```
 
-### Kubernetes Deployment
+### Kubernetes
 
 ```bash
-# Install using Helm
-helm install github-code-agent ./helm/agentfield
-
-# Install with custom values
-helm install github-code-agent ./helm/agentfield -f ./helm/agentfield/values-production.yaml
-
-# Update deployment
-helm upgrade github-code-agent ./helm/agentfield
+# Deploy with Helm
+helm install agentfield-control-plane ./helm/agentfield \
+  -n agentfield \
+  --create-namespace
 
 # Check status
-kubectl get pods -l app=github-code-agent
-```
-
-### Using Makefile
-
-```bash
-# Build the binary
-make build
-
-# Run tests
-make test
-
-# Run the agent locally
-make run
-
-# Build Docker image
-make docker
-
-# Clean build artifacts
-make clean
-
-# Run linters
-make lint
+kubectl get pods -n agentfield
 ```
 
 ## Performance
 
-### Benchmarks
-
-| Metric           | Before Phase 4 | After Phase 4 | Improvement       |
-| ---------------- | -------------- | ------------- | ----------------- |
-| PR Review Time   | 15-20s         | 5-8s          | **60% faster**    |
-| GitHub API Calls | 15-20 per PR   | 8-12 per PR   | **40% reduction** |
-| AI API Calls     | 5-8 per PR     | 3-5 per PR    | **40% reduction** |
-| Cache Hit Rate   | N/A            | 40-50%        | **New**           |
-| Cost per 50 PRs  | $37.80/month   | $20-25/month  | **35% savings**   |
-
 ### Optimizations
 
-1. **Parallel Execution** (`pkg/performance/parallel.go`)
-   - Concurrent file analysis
-   - Configurable max concurrency (default: 10)
-   - Thread-safe result collection
-   - ~10x faster for 50 files
+| Optimization        | Improvement     | Description                    |
+| ------------------- | --------------- | ------------------------------ |
+| Parallel Execution  | ~10x faster     | Concurrent file analysis       |
+| Smart Caching       | 35% cost reduction | AI response caching (15-min TTL) |
+| Rate Limit Handling | Automatic       | Backoff and adaptive limiting  |
 
-2. **Smart Caching** (`pkg/performance/cache.go`)
-   - PR file content (15-min TTL)
-   - AI responses (SHA256-based, 15-min TTL)
-   - GitHub API metadata (30s-15min TTL)
-   - Cache hit tracking and statistics
+### Cost Estimation
 
-3. **Rate Limit Handling** (`pkg/performance/ratelimit.go`)
-   - Monitors GitHub API rate limits
-   - Automatic wait when threshold reached
-   - Exponential backoff on failures
-   - Adaptive rate limiting based on success rate
+**Assumptions:** 50 PRs/day, 200 LOC/PR, ~4000 tokens/review
 
-## Documentation
-
-- 📖 **[USER_GUIDE.md](docs/USER_GUIDE.md)** - Complete user guide
-- 📖 **[CONFIGURATION_REFERENCE.md](docs/CONFIGURATION_REFERENCE.md)** - Configuration reference
-- 📖 **[API_REFERENCE.md](docs/API_REFERENCE.md)** - API documentation
-- 📖 **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment guide
-- 📖 **[QUICK_START.md](docs/QUICK_START.md)** - Quick start guide
-
-## Cost Estimation
-
-### AI API Costs (DeepSeek via OpenRouter)
-
-**Assumptions:**
-
-- 50 PRs/day
-- Average 200 LOC per PR
-- ~4000 tokens per review (2000 input + 2000 output)
-
-**DeepSeek Chat Pricing:**
+**DeepSeek Pricing (via OpenRouter):**
 
 - Input: $0.14 per 1M tokens
 - Output: $0.28 per 1M tokens
-- Cache hits: 90% discount
 
-**Monthly costs:**
+**Monthly Costs:**
 
-- Without caching: ~$37.80/month
-- With 50% cache hit rate: **$20-25/month** (35% savings)
-
-**Infrastructure:**
-
-- Compute: $50-100/month (2-4 Go agent pods)
-- Storage: <$10/month
-
-**Total: $80-135/month** (significantly cheaper than GPT-4 or Claude Opus)
-
-## Key Features Summary
-
-### ✅ Well-Tested
-
-- 58 test functions (with multiple sub-tests) across 11 test files
-- Comprehensive unit test coverage
-- Mock infrastructure for reliable testing
-- Most tests passing (52/58, webhook tests have compilation errors)
-
-### ✅ Performance Leader
-
-- 60% faster PR reviews (parallel execution)
-- 35% cost reduction (AI caching)
-- 40% fewer GitHub API calls (smart caching)
-- Automatic rate limit protection
-
-### ✅ Well-Documented
-
-- Comprehensive documentation suite
-- User guides with examples
-- Complete API reference
-- Configuration reference with all options
-- Deployment guides for Docker and Kubernetes
-
-### ✅ Secure
-
-- Webhook signature validation
-- GitHub App authentication with JWT
-- Installation token management (1-hour expiry)
-- No hardcoded secrets
-- Input validation on all endpoints
-
-### ✅ Production-Ready Deployment
-
-- Docker containerization with multi-stage builds
-- Kubernetes Helm charts for easy deployment
-- Horizontal pod autoscaling (HPA) configured
-- Non-root container security
-- Health checks and readiness probes
-- Production and development configurations
+- AI API (without caching): ~$38/month
+- AI API (with 50% cache hits): **~$20-25/month**
+- Infrastructure: $50-100/month (2-4 pods)
+- **Total: ~$80-135/month**
 
 ## Deployment
 
-### Docker Deployment
-
-The project includes a production-ready multi-stage Dockerfile:
-
-**Features:**
-
-- Multi-stage build for minimal image size
-- Go 1.24.13-alpine base image
-- Non-root user (appuser:1000)
-- CA certificates for HTTPS
-
-**Build and run:**
+### Docker
 
 ```bash
 docker build -t github-code-agent .
 docker run -d -p 8001:8001 --env-file .env --name code-agent github-code-agent
 ```
 
-### Kubernetes Deployment
+### Kubernetes (Production)
 
 Production-ready Helm chart with:
 
-**Control Plane:**
-
-- 1 replica deployment
-- 500m CPU / 512Mi memory requests
+- Control plane: 1-2 replicas
+- Agent workers: 3-10 replicas with HPA
 - Health and readiness probes
 - ConfigMap for configuration
 - External secrets management
 
-**Worker Agents:**
-
-- 2-10 replicas with HPA
-- Auto-scaling based on CPU (70% threshold)
-- Separate deployment for agent workloads
-
-**Deploy to Kubernetes:**
-
 ```bash
-# Create namespace
-kubectl create namespace github-code-agent
-
 # Create secrets
-kubectl create secret generic github-code-agent-secrets \
-  --from-literal=github-token=ghp_your_token \
-  --from-literal=agentfield-api-key=your_key \
-  --from-literal=openai-api-key=sk-your_key \
-  -n github-code-agent
+kubectl create secret generic agentfield-secrets \
+  --from-literal=GITHUB_APP_ID=123456 \
+  --from-literal=GITHUB_PRIVATE_KEY="-----BEGIN..." \
+  --from-literal=OPENAI_API_KEY=sk-your-key \
+  -n agentfield
 
-# Deploy with Helm
-helm install github-code-agent ./helm/agentfield \
-  --namespace github-code-agent \
+# Deploy
+helm install agentfield-control-plane ./helm/agentfield \
+  --namespace agentfield \
   -f ./helm/agentfield/values-production.yaml
-
-# Check status
-kubectl get all -n github-code-agent
 ```
 
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions.
+See [Deployment Guide](docs/DEPLOYMENT.md) for complete instructions.
+
+## Documentation
+
+| Document | Description |
+| -------- | ----------- |
+| [Quick Start](docs/QUICK_START.md) | Get started in 5-20 minutes |
+| [User Guide](docs/USER_GUIDE.md) | How to use the agent effectively |
+| [GitHub App Setup](docs/GITHUB_APP_SETUP.md) | Configure GitHub App step-by-step |
+| [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) | All configuration options |
+| [Deployment Guide](docs/DEPLOYMENT.md) | Production deployment with Kubernetes |
+| [API Reference](docs/API_REFERENCE.md) | Technical API documentation |
+
+## Troubleshooting
+
+### Agent Not Responding
+
+1. Check webhook delivery: GitHub App → Advanced → Recent Deliveries
+2. Verify webhook URL is publicly accessible
+3. Check agent logs: `docker logs github-code-agent` or `kubectl logs -f deployment/agentfield-control-plane -n agentfield`
+
+### Permission Errors
+
+Verify GitHub App permissions:
+- Contents: Read & Write
+- Pull requests: Read & Write
+- Checks: Read
+
+### High API Costs
+
+- Enable caching (default: 15-min TTL)
+- Use `wait_for_ci: true` to avoid reviewing failing code
+- Exclude files: `ignore_paths: ["*.test.js", "vendor/**"]`
+
+See [User Guide - Troubleshooting](docs/USER_GUIDE.md#troubleshooting) for more.
 
 ## Contributing
 
-Contributions are welcome! Please read our contributing guidelines.
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `go test ./...`
+5. Submit a pull request
 
 ## License
 
 This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)**.
 
-You are free to:
-
-- Share and redistribute the material
-- Adapt, remix, and build upon the material
-
-Under the following terms:
-
-- **Attribution**: You must give appropriate credit and indicate if changes were made
-- **NonCommercial**: You may not use the material for commercial purposes
-
 ### Commercial Licensing
 
 **Self-Deployment: FREE**
 
-Self-deploy and use freely for any purpose, including commercial:
-
+Use freely for any purpose including commercial:
 - ✅ Internal company tools
 - ✅ Your own code reviews
-- ✅ On your infrastructure
-- ✅ No revenue sharing required
+- ✅ Your infrastructure
 
 **Hosted/SaaS: 10% Revenue Sharing**
 
-If you offer this as a service to customers:
+If you offer this as a service:
+- 10% of gross revenue from the hosted service
+- Includes support and updates
 
-- **10% of gross revenue** from the hosted service
-- Simple flat rate - transparent and predictable
-- Includes ongoing support and updates
-- Quarterly reporting and payments
-
-**Examples:**
-
-_FREE (Self-Deployed):_
-
-- Your company uses it to review internal code
-- Consultant uses it for client projects
-- Startup uses it for their own development
-
-_Requires License (Hosted/SaaS):_
-
-- You charge customers for code review services
-- SaaS product offering AI code reviews
-- Paid platform providing this functionality
-
-[Contact for hosted/SaaS licensing](https://github.com/yongchenglow/af-code-agent/issues)
-
-See the [LICENSE](LICENSE) file for full details.
+See [LICENSE](LICENSE) for full details.
 
 ### Attribution
 
-When using or modifying this work, please provide attribution as follows:
+When using or modifying this work:
 
 ```text
 Based on af-code-agent by Yong Cheng Low
 (https://github.com/yongchenglow/af-code-agent), licensed under CC BY-NC 4.0
 ```
 
+## Support
+
+- **Issues**: https://github.com/yongchenglow/af-code-agent/issues
+- **Discussions**: https://github.com/yongchenglow/af-code-agent/discussions
+- **AgentField**: https://www.agentfield.ai
+
 ## Sponsorship
 
-If you find this project useful, please consider sponsoring its development:
+If you find this project useful, consider sponsoring:
 
 - [GitHub Sponsors](https://github.com/sponsors/yongchenglow)
 - [DBS PayLah!](https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef=zp6RIxPiw5)
 
-Your support helps maintain and improve this project for the community.
-
-## Support
-
-For issues and questions:
-
-- **GitHub Issues**: [repository-url]/issues
-- **Documentation**: See `docs/` directory
-- **AgentField**: <https://www.agentfield.ai>
-
 ---
 
-**Last Updated:** 2026-02-08
+**Last Updated:** 2026-02-19
 **Version:** 1.0.0
-**Go Version:** 1.24.13
-**Tests:** 58 functions (52 passing, 6 with build errors)
-**Status:** ✅ Active Development
+**Go Version:** 1.24
+**Status:** ✅ Production Ready

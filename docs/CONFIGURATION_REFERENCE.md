@@ -18,6 +18,40 @@ Complete reference for all configuration options in the GitHub Code Review Agent
 
 ---
 
+## Configuration Overview
+
+```mermaid
+flowchart TB
+    subgraph Env["Environment Variables<br/>.env file or deployment"]
+        GH[GitHub Credentials]
+        AI[AI Configuration]
+        APP[Application Settings]
+    end
+    
+    subgraph File["Repository Configuration<br/>.github/code-agent.yml"]
+        AGT[Agent Settings]
+        WEB[Webhook Triggers]
+        REV[Review Rules]
+        VAL[Validation Loop]
+        STD[Coding Standards]
+    end
+    
+    subgraph Runtime["Runtime Behavior"]
+        MODE[Operating Mode<br/>Safe/YOLO]
+        THR[Severity Threshold]
+        FIX[Auto-Fix Enabled]
+    end
+    
+    Env --> Runtime
+    File --> Runtime
+    
+    style Env fill:#e1f5ff
+    style File fill:#fff3cd
+    style Runtime fill:#d4edda
+```
+
+---
+
 ## Environment Variables
 
 Environment variables are defined in `.env` file or set in your deployment environment.
@@ -27,27 +61,25 @@ Environment variables are defined in `.env` file or set in your deployment envir
 | Variable                  | Required | Description                                | Example            |
 | ------------------------- | -------- | ------------------------------------------ | ------------------ |
 | `GITHUB_APP_ID`           | Yes      | GitHub App ID                              | `123456`           |
-| `GITHUB_PRIVATE_KEY_PATH` | Yes      | Path to GitHub App private key (.pem file) | `./github-app.pem` |
+| `GITHUB_PRIVATE_KEY`      | Yes      | GitHub App private key (PEM format)        | `-----BEGIN...`    |
 | `GITHUB_WEBHOOK_SECRET`   | Yes      | Webhook secret for signature validation    | `your-secret-here` |
 
 ### AI Configuration
 
 | Variable             | Required | Description                                | Default                  | Example                    |
 | -------------------- | -------- | ------------------------------------------ | ------------------------ | -------------------------- |
-| `OPENROUTER_API_KEY` | Yes\*    | OpenRouter API key for DeepSeek            | -                        | `sk-or-v1-abc123`          |
-| `OPENOPENAI_API_KEY` | Yes\*    | OpenAI API key (alternative to OpenRouter) | -                        | `sk-proj-abc123`           |
-| `AI_MODEL`           | Yes      | AI model to use                            | `deepseek/deepseek-chat` | `gpt-4o`                   |
+| `OPENAI_API_KEY`     | Yes      | API key for DeepSeek or OpenAI-compatible  | -                        | `sk-abc123`                |
+| `AI_MODEL`           | Yes      | AI model to use                            | `deepseek-chat`          | `gpt-4o`                   |
 | `AI_BASE_URL`        | No       | Custom AI API base URL                     | Auto-detected            | `https://api.deepseek.com` |
 | `AI_TEMPERATURE`     | No       | AI temperature (0-1)                       | `0.2`                    | `0.1`                      |
 | `AI_MAX_TOKENS`      | No       | Maximum tokens per request                 | `4000`                   | `2000`                     |
-
-\*Either `OPENROUTER_API_KEY` or `OPENOPENAI_API_KEY` is required
 
 ### AgentField Configuration
 
 | Variable         | Required | Description                  | Default                 | Example                             |
 | ---------------- | -------- | ---------------------------- | ----------------------- | ----------------------------------- |
-| `AGENTFIELD_URL` | No       | AgentField control plane URL | `http://localhost:8080` | `https://agentfield.yourdomain.com` |
+| `AGENTFIELD_URL` | No       | AgentField control plane URL | `http://localhost:8001` | `https://agentfield.yourdomain.com` |
+| `AGENTFIELD_TOKEN` | No     | AgentField authentication token | -                     | `your-token-here`                   |
 
 ### Application Configuration
 
@@ -250,7 +282,7 @@ review:
 - **Example**:
   ```yaml
   review:
-    severity_threshold: low # Only auto-fix Low issues
+    severity_threshold: low # Only auto-fix Low severity issues
   ```
 
 #### `ignore_paths`
@@ -840,26 +872,6 @@ Configuration is loaded in this order (later overrides earlier):
 4. PR labels (for per-PR overrides)
 
 Example:
-t validates configuration on startup. Common validation errors:
-
-- Invalid `mode` value → must be `safe` or `yolo`
-- Invalid `severity_threshold` → must be `critical`, `high`, `medium`, or `low`
-- `max_fix_attempts` < 1 → must be at least 1
-- Invalid webhook trigger → must be recognized GitHub event
-- Invalid linter name → check language-specific linter availability
-
----
-
-## Configuration Precedence
-
-Configuration is loaded in this order (later overrides earlier):
-
-1. Default values
-2. `.github/code-agent.yml` (repository)
-3. Environment variables (for secrets)
-4. PR labels (for per-PR overrides)
-
-Example:
 
 ```yaml
 # Default: mode = safe
@@ -870,22 +882,9 @@ Example:
 
 ---
 
-## Schema Validation
-
-You can validate your configuration file using JSON Schema:
-
-```bash
-# Download schema
-curl -O https://raw.githubusercontent.com/yourorg/github-code-agent/main/schema/config-schema.json
-
-# Validate
-npx ajv-cli validate -s config-schema.json -d .github/code-agent.yml
-```
-
----
-
 ## See Also
 
-- [User Guide](USER_GUIDE.md)
-- [API Documentation](API_REFERENCE.md)
-- [Examples](../examples/)
+- [User Guide](USER_GUIDE.md) - How to use the agent
+- [API Reference](API_REFERENCE.md) - Technical API documentation
+- [GitHub App Setup](GITHUB_APP_SETUP.md) - Setting up GitHub App
+- [Deployment](DEPLOYMENT.md) - Deployment instructions

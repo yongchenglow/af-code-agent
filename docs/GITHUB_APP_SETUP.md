@@ -2,6 +2,35 @@
 
 This guide will walk you through creating and configuring a GitHub App for the Code Review Agent.
 
+## Prerequisites
+
+- A GitHub account with admin access to the repository or organization
+- A deployed instance of the Code Review Agent (or local development setup)
+- A publicly accessible webhook URL (use ngrok/smee.io for local development)
+
+## Setup Overview
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant GH as GitHub
+    participant App as Code Agent
+    participant Ngrok as ngrok
+
+    Dev->>GH: 1. Create GitHub App
+    Dev->>GH: 2. Generate Private Key
+    Dev->>GH: 3. Note App ID
+    Dev->>GH: 4. Install App on Repo
+    Dev->>Ngrok: 5. Start ngrok tunnel
+    Dev->>GH: 6. Update Webhook URL
+    GH->>App: 7. Send Webhook (PR event)
+    App->>App: Validate Signature
+    App->>App: Process Event
+    App->>GH: Post Review Comment
+```
+
+---
+
 ## Step 1: Create a GitHub App
 
 1. Navigate to your GitHub organization or personal account settings
@@ -80,12 +109,19 @@ Select the following webhook events:
 
 ## Step 5: Configure Environment Variables
 
-Create a `.env` file in your project root:
+Create or update your `.env` file with the GitHub App credentials:
 
 ```bash
-# GitHub Configuration
+# GitHub App Configuration
 GITHUB_APP_ID=123456                              # Your App ID from Step 3
-GITHUB_PRIVATE_KEY_PATH=./github-app.pem          # Path to your private key
+
+# GitHub App Private Key (as environment variable)
+# Option 1: Inline key (replace newlines with \n)
+GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----"
+
+# Option 2: Load from file using command substitution (recommended for local dev)
+# GITHUB_PRIVATE_KEY=$(cat github-app.pem)
+
 GITHUB_WEBHOOK_SECRET=your-generated-secret-here   # Secret from Step 1
 
 # DeepSeek AI Configuration
@@ -97,8 +133,10 @@ AI_MAX_TOKENS=4000
 
 # Application Settings
 LOG_LEVEL=info
-PORT=8080
+PORT=8001
 ```
+
+**Note**: The private key must be provided as an environment variable containing the full PEM content. For production deployments, use a secret management service (AWS Secrets Manager, HashiCorp Vault, etc.) to inject this value.
 
 ## Step 6: Test Webhook Delivery
 
@@ -116,7 +154,7 @@ PORT=8080
 2. Start ngrok:
 
    ```bash
-   ngrok http 8080
+   ngrok http 8001
    ```
 
 3. Copy the HTTPS forwarding URL (e.g., `https://abc123.ngrok.io`)
@@ -147,7 +185,7 @@ PORT=8080
 
    ```bash
    npm install -g smee-client
-   smee -u https://smee.io/your-channel-id -t http://localhost:8080/webhook
+   smee -u https://smee.io/your-channel-id -t http://localhost:8001/webhook
    ```
 
 5. Start your agent in another terminal
@@ -157,7 +195,7 @@ PORT=8080
 1. Check the agent's health endpoint:
 
    ```bash
-   curl http://localhost:8080/health
+   curl http://localhost:8001/health
    ```
 
    Expected response:
@@ -183,9 +221,10 @@ PORT=8080
 
 ### Private Key Parse Error
 
-- Verify the `.pem` file is in valid PEM format
-- Check file permissions: `chmod 600 github-app.pem`
-- Ensure the path in `GITHUB_PRIVATE_KEY_PATH` is correct
+- Verify the key is in valid PEM format
+- If loading from a file, ensure the file exists and is readable
+- Check that newlines are properly escaped when providing the key inline (`\n`)
+- Verify the key format is either PKCS1 or PKCS8
 
 ### Installation Token Creation Fails
 
