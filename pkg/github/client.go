@@ -10,8 +10,8 @@ import (
 
 // Client wraps the GitHub API client
 type Client struct {
-	client *github.Client
-	token  string
+	client  *github.Client
+	token   string
 	appAuth *AppAuth
 }
 

@@ -221,14 +221,14 @@ func (o *ExecutorOrchestrator) determineRecommendation(result *WorkflowResult) s
 
 // WorkflowResult contains the result of the workflow execution
 type WorkflowResult struct {
-	Plan          *planner.ReviewPlan
-	FixResults    []*FixTaskResult
-	TestResults   []*testexec.TestResult
-	Success       bool
-	Error         string
+	Plan           *planner.ReviewPlan
+	FixResults     []*FixTaskResult
+	TestResults    []*testexec.TestResult
+	Success        bool
+	Error          string
 	Recommendation string
-	Summary       string
-	Warnings      []string
+	Summary        string
+	Warnings       []string
 }
 
 // FixTaskResult contains the result of a single fix task

@@ -14,11 +14,11 @@ import (
 
 // ReviewHistory tracks previous reviews for deduplication
 type ReviewHistory struct {
-	PRNumber   int               `json:"pr_number"`
-	CommitSHA  string            `json:"commit_sha"`
-	IssueIDs   []string          `json:"issue_ids"`
-	ReviewedAt string            `json:"reviewed_at"`
-	CommentIDs map[string]int64  `json:"comment_ids"` // issueID -> commentID
+	PRNumber   int              `json:"pr_number"`
+	CommitSHA  string           `json:"commit_sha"`
+	IssueIDs   []string         `json:"issue_ids"`
+	ReviewedAt string           `json:"reviewed_at"`
+	CommentIDs map[string]int64 `json:"comment_ids"` // issueID -> commentID
 }
 
 // saveReviewHistory persists review data to prevent duplicate comments

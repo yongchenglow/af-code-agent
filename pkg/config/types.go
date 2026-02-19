@@ -16,10 +16,10 @@ type Config struct {
 
 // AgentConfig contains agent-level settings
 type AgentConfig struct {
-	Enabled              bool     `yaml:"enabled"`
-	Mode                 string   `yaml:"mode"` // "yolo" or "safe"
-	AllowedRepositories  []string `yaml:"allowed_repositories,omitempty"`
-	AllowedPatterns      []string `yaml:"allowed_patterns,omitempty"`
+	Enabled             bool     `yaml:"enabled"`
+	Mode                string   `yaml:"mode"` // "yolo" or "safe"
+	AllowedRepositories []string `yaml:"allowed_repositories,omitempty"`
+	AllowedPatterns     []string `yaml:"allowed_patterns,omitempty"`
 }
 
 // WebhooksConfig configures webhook handling

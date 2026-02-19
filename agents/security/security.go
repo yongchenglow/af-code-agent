@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	_ "embed"
 	"github.com/Agent-Field/agentfield/sdk/go/agent"
 	"github.com/Agent-Field/agentfield/sdk/go/ai"
-	_ "embed"
 	"github.com/yourorg/github-code-agent/agents/analyzer"
 	"github.com/yourorg/github-code-agent/agents/planner"
 	"github.com/yourorg/github-code-agent/pkg/constants"

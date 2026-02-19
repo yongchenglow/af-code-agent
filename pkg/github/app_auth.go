@@ -20,12 +20,11 @@ type AppAuth struct {
 	appID          int64
 	privateKey     *rsa.PrivateKey
 	installationID int64
-	client         *github.Client
 
 	// Token cache with automatic refresh
-	mu           sync.RWMutex
-	accessToken  string
-	tokenExpiry  time.Time
+	mu          sync.RWMutex
+	accessToken string
+	tokenExpiry time.Time
 }
 
 // NewAppAuth creates a new GitHub App authenticator

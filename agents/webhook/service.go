@@ -13,6 +13,15 @@ import (
 	ghpkg "github.com/yourorg/github-code-agent/pkg/github"
 )
 
+// contextKey is a type for context keys to avoid collisions
+type contextKey string
+
+const (
+	contextKeyAgent        contextKey = "agent"
+	contextKeyConfig       contextKey = "config"
+	contextKeyGitHubClient contextKey = "github_client"
+)
+
 // Service handles webhook business logic
 type Service struct {
 	agent         *agent.Agent
@@ -35,9 +44,9 @@ func NewService(a *agent.Agent, webhookSecret string, ghClient *ghpkg.Client, cf
 
 // PrepareContext adds agent, config, and GitHub client to the context
 func (s *Service) PrepareContext(ctx context.Context) context.Context {
-	ctx = context.WithValue(ctx, "agent", s.agent)
-	ctx = context.WithValue(ctx, "config", s.config)
-	ctx = context.WithValue(ctx, "github_client", s.ghClient)
+	ctx = context.WithValue(ctx, contextKeyAgent, s.agent)
+	ctx = context.WithValue(ctx, contextKeyConfig, s.config)
+	ctx = context.WithValue(ctx, contextKeyGitHubClient, s.ghClient)
 	return ctx
 }
 

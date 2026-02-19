@@ -215,15 +215,3 @@ func findSubstring(s, substr string) bool {
 	}
 	return false
 }
-
-type promptBuilder struct {
-	content string
-}
-
-func (pb *promptBuilder) WriteString(s string) {
-	pb.content += s
-}
-
-func (pb *promptBuilder) String() string {
-	return pb.content
-}
