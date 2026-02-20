@@ -75,7 +75,7 @@ LOG_LEVEL=info
 
 ### Step 3: Set Up GitHub App
 
-Follow the [GitHub App Setup Guide](GITHUB_APP_SETUP.md) to:
+Follow the [GitHub App Setup Guide](github_app_setup.md) to:
 
 1. Create a GitHub App
 2. Generate private key
@@ -231,15 +231,15 @@ webhooks:
   debounce_seconds: 30
 ```
 
-See [Configuration Reference](CONFIGURATION_REFERENCE.md) for all options.
+See [Configuration Reference](configuration_reference.md) for all options.
 
 ### Learn More
 
-- **[User Guide](USER_GUIDE.md)** - How to use the agent effectively
-- **[GitHub App Setup](GITHUB_APP_SETUP.md)** - Detailed GitHub App configuration
-- **[Configuration Reference](CONFIGURATION_REFERENCE.md)** - All configuration options
-- **[Deployment Guide](DEPLOYMENT.md)** - Production deployment details
-- **[API Reference](API_REFERENCE.md)** - Technical API documentation
+- **[User Guide](user_guide.md)** - How to use the agent effectively
+- **[GitHub App Setup](github_app_setup.md)** - Detailed GitHub App configuration
+- **[Configuration Reference](configuration_reference.md)** - All configuration options
+- **[Deployment Guide](deployment.md)** - Production deployment details
+- **[API Reference](api_reference.md)** - Technical API documentation
 
 ### Troubleshooting
 
@@ -262,7 +262,7 @@ See [Configuration Reference](CONFIGURATION_REFERENCE.md) for all options.
 - Use `wait_for_ci: true` to avoid reviewing failing code
 - Exclude test files: `ignore_paths: ["*.test.js"]`
 
-For more help, see [Troubleshooting](USER_GUIDE.md#troubleshooting) in the User Guide.
+For more help, see [Troubleshooting](user_guide.md#troubleshooting) in the User Guide.
 
 ---
 

@@ -51,11 +51,11 @@ The GitHub Code Review Agent is an autonomous AI-powered code reviewer that auto
 
 3. **Set up GitHub App:**
 
-   See [GitHub App Setup Guide](GITHUB_APP_SETUP.md) for detailed instructions.
+   See [GitHub App Setup Guide](github_app_setup.md) for detailed instructions.
 
 4. **Configure repository:**
 
-   Create `.github/code-agent.yml` in your repository (see [Configuration Reference](CONFIGURATION_REFERENCE.md)).
+   Create `.github/code-agent.yml` in your repository (see [Configuration Reference](configuration_reference.md)).
 
 ### First PR Review
 

@@ -884,7 +884,7 @@ Example:
 
 ## See Also
 
-- [User Guide](USER_GUIDE.md) - How to use the agent
-- [API Reference](API_REFERENCE.md) - Technical API documentation
-- [GitHub App Setup](GITHUB_APP_SETUP.md) - Setting up GitHub App
-- [Deployment](DEPLOYMENT.md) - Deployment instructions
+- [User Guide](user_guide.md) - How to use the agent
+- [API Reference](api_reference.md) - Technical API documentation
+- [GitHub App Setup](github_app_setup.md) - Setting up GitHub App
+- [Deployment](deployment.md) - Deployment instructions

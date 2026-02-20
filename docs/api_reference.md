@@ -309,7 +309,7 @@ type Config struct {
 }
 ```
 
-See [Configuration Reference](CONFIGURATION_REFERENCE.md) for complete details.
+See [Configuration Reference](configuration_reference.md) for complete details.
 
 ---
 
@@ -431,7 +431,7 @@ result, err := ghClient.GetPullRequest(ctx, owner, repo, number)
 
 ## See Also
 
-- [User Guide](USER_GUIDE.md) - How to use the agent
-- [Configuration Reference](CONFIGURATION_REFERENCE.md) - Configuration options
-- [GitHub App Setup](GITHUB_APP_SETUP.md) - Setting up GitHub App
+- [User Guide](user_guide.md) - How to use the agent
+- [Configuration Reference](configuration_reference.md) - Configuration options
+- [GitHub App Setup](github_app_setup.md) - Setting up GitHub App
 - [AgentField Documentation](https://www.agentfield.ai) - AgentField SDK docs

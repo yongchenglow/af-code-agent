@@ -416,4 +416,4 @@ For issues or questions:
 2. Review workflow logs in GitHub Actions
 3. Check Kubernetes pod logs and events
 4. Consult the [README.md](../README.md)
-5. See [USER_GUIDE.md](USER_GUIDE.md) for usage information
+5. See [user_guide.md](user_guide.md) for usage information

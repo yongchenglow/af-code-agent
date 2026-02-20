@@ -9,12 +9,13 @@ An autonomous GitHub code review agent built with Go and AgentField that automat
 
 ## Quick Links
 
-- **📖 [Quick Start Guide](docs/QUICK_START.md)** - Get started in 5 minutes
-- **📖 [User Guide](docs/USER_GUIDE.md)** - How to use the agent
-- **📖 [GitHub App Setup](docs/GITHUB_APP_SETUP.md)** - Configure GitHub App
-- **📖 [Configuration Reference](docs/CONFIGURATION_REFERENCE.md)** - All options
-- **📖 [Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment
-- **📖 [API Reference](docs/API_REFERENCE.md)** - Technical documentation
+- **📖 [Quick Start Guide](docs/quick_start.md)** - Get started in 5 minutes
+- **📖 [User Guide](docs/user_guide.md)** - How to use the agent
+- **📖 [GitHub App Setup](docs/github_app_setup.md)** - Configure GitHub App
+- **📖 [Configuration Reference](docs/configuration_reference.md)** - All options
+- **📖 [Deployment Guide](docs/deployment.md)** - Production deployment
+- **📖 [API Reference](docs/api_reference.md)** - Technical documentation
+- **📖 [Reliability Features](docs/reliability-features.md)** - Circuit breaker, retry patterns
 
 ## Overview
 
@@ -151,7 +152,13 @@ af-code-agent/
 │   ├── reviewer/                      # AI code review
 │   ├── standards/                     # Standards validation
 │   ├── fixer/                         # Fix generation
-│   └── gitops/                        # Git operations
+│   ├── gitops/                        # Git operations
+│   ├── planner/                       # Review planning
+│   ├── security/                      # Security scanning
+│   ├── bugfix/                        # Bug fix agent
+│   ├── testexec/                      # Test execution
+│   ├── qasynth/                       # QA synthesis
+│   └── workflow/                      # Workflow orchestration
 ├── pkg/
 │   ├── app/                           # Application bootstrap
 │   ├── config/                        # Configuration
@@ -159,7 +166,12 @@ af-code-agent/
 │   ├── performance/                   # Caching, parallel exec
 │   ├── context/                       # Context management
 │   ├── constants/                     # Constants
-│   └── utils/                         # Utilities
+│   ├── utils/                         # Utilities
+│   ├── logger/                        # Structured logging
+│   ├── middleware/                    # HTTP middleware
+│   ├── validator/                     # Validation utilities
+│   ├── circuitbreaker/                # Circuit breaker pattern
+│   └── retry/                         # Retry with exponential backoff
 ├── helm/agentfield/                   # Kubernetes Helm chart
 ├── docs/                              # Documentation
 ├── .github/
@@ -200,7 +212,7 @@ af-code-agent/
 
 3. **Set up GitHub App:**
 
-   See [GitHub App Setup Guide](docs/GITHUB_APP_SETUP.md)
+   See [GitHub App Setup Guide](docs/github_app_setup.md)
 
 4. **Run the agent:**
 
@@ -215,7 +227,7 @@ af-code-agent/
    # Update GitHub App webhook URL with ngrok HTTPS URL
    ```
 
-For detailed instructions, see [Quick Start Guide](docs/QUICK_START.md).
+For detailed instructions, see [Quick Start Guide](docs/quick_start.md).
 
 ## Configuration
 
@@ -263,7 +275,7 @@ validation:
     - security
 ```
 
-See [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) for all options.
+See [Configuration Reference](docs/configuration_reference.md) for all options.
 
 ## Usage
 
@@ -450,20 +462,20 @@ helm install agentfield-control-plane ./helm/agentfield \
   -f ./helm/agentfield/values-production.yaml
 ```
 
-See [Deployment Guide](docs/DEPLOYMENT.md) for complete instructions.
+See [Deployment Guide](docs/deployment.md) for complete instructions.
 
 ## Documentation
 
 | Document | Description |
 | -------- | ----------- |
-| [Quick Start](docs/QUICK_START.md) | Get started in 5-20 minutes |
-| [User Guide](docs/USER_GUIDE.md) | How to use the agent effectively |
-| [GitHub App Setup](docs/GITHUB_APP_SETUP.md) | Configure GitHub App step-by-step |
-| [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) | All configuration options |
-| [Deployment Guide](docs/DEPLOYMENT.md) | Production deployment with Kubernetes |
-| [API Reference](docs/API_REFERENCE.md) | Technical API documentation |
-| [Architecture Decisions](docs/adr/) | ADRs for major design decisions |
+| [Quick Start](docs/quick_start.md) | Get started in 5-20 minutes |
+| [User Guide](docs/user_guide.md) | How to use the agent effectively |
+| [GitHub App Setup](docs/github_app_setup.md) | Configure GitHub App step-by-step |
+| [Configuration Reference](docs/configuration_reference.md) | All configuration options |
+| [Deployment Guide](docs/deployment.md) | Production deployment with Kubernetes |
+| [API Reference](docs/api_reference.md) | Technical API documentation |
 | [Reliability Features](docs/reliability-features.md) | Circuit breaker, retry, health checks |
+| [Improvements](improvements.md) | Future improvement recommendations |
 
 ## Troubleshooting
 
@@ -486,7 +498,7 @@ Verify GitHub App permissions:
 - Use `wait_for_ci: true` to avoid reviewing failing code
 - Exclude files: `ignore_paths: ["*.test.js", "vendor/**"]`
 
-See [User Guide - Troubleshooting](docs/USER_GUIDE.md#troubleshooting) for more.
+See [User Guide - Troubleshooting](docs/user_guide.md#troubleshooting) for more.
 
 ## Contributing
 
