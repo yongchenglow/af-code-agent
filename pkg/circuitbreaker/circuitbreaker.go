@@ -84,22 +84,22 @@ type Metrics struct {
 
 // CircuitBreaker implements the circuit breaker pattern.
 type CircuitBreaker struct {
-	config  Config
-	state   State
-	mu      sync.RWMutex
-	cond    *sync.Cond
+	config Config
+	state  State
+	mu     sync.RWMutex
+	cond   *sync.Cond
 
 	// Counters
-	failureCount      int
-	successCount      int
-	totalRequests     int64
-	totalFailures     int64
-	totalSuccesses    int64
-	stateChangeCount  int64
+	failureCount     int
+	successCount     int
+	totalRequests    int64
+	totalFailures    int64
+	totalSuccesses   int64
+	stateChangeCount int64
 
 	// Timing
-	lastFailureTime   time.Time
-	lastStateChange   time.Time
+	lastFailureTime time.Time
+	lastStateChange time.Time
 
 	// Half-open state tracking
 	halfOpenRequests int

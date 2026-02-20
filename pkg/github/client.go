@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/go-github/v57/github"
-	"golang.org/x/oauth2"
 	"github.com/yourorg/github-code-agent/pkg/circuitbreaker"
 	"github.com/yourorg/github-code-agent/pkg/retry"
+	"golang.org/x/oauth2"
 )
 
 // Client wraps the GitHub API client
@@ -80,12 +80,12 @@ func NewClient(token string) (*Client, error) {
 			Name:                "github-api",
 		}),
 		retryer: retry.New(retry.Config{
-			MaxAttempts:    retryConfig.MaxAttempts,
-			InitialDelay:   retryConfig.InitialDelay,
-			MaxDelay:       retryConfig.MaxDelay,
-			Multiplier:     retryConfig.Multiplier,
-			Jitter:         0.1,
-			Retryable:      retry.TransientRetryable,
+			MaxAttempts:  retryConfig.MaxAttempts,
+			InitialDelay: retryConfig.InitialDelay,
+			MaxDelay:     retryConfig.MaxDelay,
+			Multiplier:   retryConfig.Multiplier,
+			Jitter:       0.1,
+			Retryable:    retry.TransientRetryable,
 		}),
 	}, nil
 }
@@ -120,12 +120,12 @@ func NewClientWithAppCredentials(appID, privateKey string) (*Client, error) {
 			Name:                "github-api",
 		}),
 		retryer: retry.New(retry.Config{
-			MaxAttempts:    retryConfig.MaxAttempts,
-			InitialDelay:   retryConfig.InitialDelay,
-			MaxDelay:       retryConfig.MaxDelay,
-			Multiplier:     retryConfig.Multiplier,
-			Jitter:         0.1,
-			Retryable:      retry.TransientRetryable,
+			MaxAttempts:  retryConfig.MaxAttempts,
+			InitialDelay: retryConfig.InitialDelay,
+			MaxDelay:     retryConfig.MaxDelay,
+			Multiplier:   retryConfig.Multiplier,
+			Jitter:       0.1,
+			Retryable:    retry.TransientRetryable,
 		}),
 	}, nil
 }
@@ -323,7 +323,8 @@ func (c *Client) GetFileContent(ctx context.Context, owner, repo, path, ref stri
 	return content, err
 }
 
-// GetPRFilesWithClient is a convenience function that fetches PR files using a standalone client
+// GetPRFilesWithClient is a convenience function that fetches PR files using a standalone client.
+//
 // Deprecated: Use client.GetPRFiles() instead
 func GetPRFiles(ctx context.Context, client *github.Client, owner, repo string, prNumber int) ([]*FileChange, error) {
 	files, _, err := client.PullRequests.ListFiles(ctx, owner, repo, prNumber, nil)
@@ -347,7 +348,8 @@ func GetPRFiles(ctx context.Context, client *github.Client, owner, repo string, 
 	return changes, nil
 }
 
-// GetPRWithClient is a convenience function that fetches PR details using a standalone client
+// GetPRWithClient is a convenience function that fetches PR details using a standalone client.
+//
 // Deprecated: Use client.GetPR() instead
 func GetPR(ctx context.Context, client *github.Client, owner, repo string, prNumber int) (*github.PullRequest, error) {
 	pr, _, err := client.PullRequests.Get(ctx, owner, repo, prNumber)
@@ -357,7 +359,8 @@ func GetPR(ctx context.Context, client *github.Client, owner, repo string, prNum
 	return pr, nil
 }
 
-// CheckCIStatusWithClient is a convenience function that checks CI status using a standalone client
+// CheckCIStatusWithClient is a convenience function that checks CI status using a standalone client.
+//
 // Deprecated: Use client.CheckCIStatus() instead
 func CheckCIStatus(ctx context.Context, client *github.Client, owner, repo, ref string) (string, error) {
 	status, _, err := client.Repositories.GetCombinedStatus(ctx, owner, repo, ref, nil)
@@ -367,7 +370,8 @@ func CheckCIStatus(ctx context.Context, client *github.Client, owner, repo, ref 
 	return status.GetState(), nil
 }
 
-// GetFileContentWithClient is a convenience function that fetches file content using a standalone client
+// GetFileContentWithClient is a convenience function that fetches file content using a standalone client.
+//
 // Deprecated: Use client.GetFileContent() instead
 func GetFileContent(ctx context.Context, client *github.Client, owner, repo, path, ref string) (string, error) {
 	fileContent, _, _, err := client.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{

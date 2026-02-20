@@ -148,8 +148,8 @@ func TestCircuitBreaker_StateTransitions(t *testing.T) {
 		fn := func() error { return errTest }
 
 		// Open circuit
-		cb.Execute(fn)
-		cb.Execute(fn)
+		_ = cb.Execute(fn)
+		_ = cb.Execute(fn)
 
 		if cb.State() != StateOpen {
 			t.Fatalf("state = %v, want open", cb.State())
@@ -176,8 +176,8 @@ func TestCircuitBreaker_StateTransitions(t *testing.T) {
 		successFn := func() error { return nil }
 
 		// Open circuit
-		cb.Execute(failFn)
-		cb.Execute(failFn)
+		_ = cb.Execute(failFn)
+		_ = cb.Execute(failFn)
 
 		// Wait for timeout
 		time.Sleep(60 * time.Millisecond)
@@ -201,8 +201,8 @@ func TestCircuitBreaker_StateTransitions(t *testing.T) {
 		successFn := func() error { return nil }
 
 		// Open circuit
-		cb.Execute(failFn)
-		cb.Execute(failFn)
+		_ = cb.Execute(failFn)
+		_ = cb.Execute(failFn)
 
 		// Wait for timeout
 		time.Sleep(60 * time.Millisecond)
@@ -234,8 +234,8 @@ func TestCircuitBreaker_Open_RejectsRequests(t *testing.T) {
 	failFn := func() error { return errTest }
 
 	// Open circuit
-	cb.Execute(failFn)
-	cb.Execute(failFn)
+	_ = cb.Execute(failFn)
+	_ = cb.Execute(failFn)
 
 	if cb.State() != StateOpen {
 		t.Fatalf("state = %v, want open", cb.State())
@@ -269,7 +269,7 @@ func TestCircuitBreaker_HalfOpen_LimitsRequests(t *testing.T) {
 
 	// Open circuit (need 10 failures)
 	for i := 0; i < 10; i++ {
-		cb.Execute(failFn)
+		_ = cb.Execute(failFn)
 	}
 
 	if cb.State() != StateOpen {
@@ -333,8 +333,8 @@ func TestCircuitBreaker_ExecuteWithResult(t *testing.T) {
 	t.Run("circuit open", func(t *testing.T) {
 		// Open circuit first
 		failFn := func() error { return errTest }
-		cb.Execute(failFn)
-		cb.Execute(failFn)
+		_ = cb.Execute(failFn)
+		_ = cb.Execute(failFn)
 
 		fn := func() (interface{}, error) { return 42, nil }
 		result, err := cb.ExecuteWithResult(fn)
@@ -362,7 +362,7 @@ func TestCircuitBreaker_Metrics(t *testing.T) {
 	}
 
 	// Fail once
-	cb.Execute(failFn)
+	_ = cb.Execute(failFn)
 	metrics = cb.Metrics()
 	if metrics.FailureCount != 1 {
 		t.Errorf("after 1 failure: failureCount = %d, want 1", metrics.FailureCount)
@@ -375,7 +375,7 @@ func TestCircuitBreaker_Metrics(t *testing.T) {
 	}
 
 	// Open circuit
-	cb.Execute(failFn)
+	_ = cb.Execute(failFn)
 	metrics = cb.Metrics()
 	if metrics.State != StateOpen {
 		t.Errorf("after 2 failures: state = %v, want open", metrics.State)
@@ -386,8 +386,8 @@ func TestCircuitBreaker_Metrics(t *testing.T) {
 
 	// Wait and recover
 	time.Sleep(60 * time.Millisecond)
-	cb.Execute(successFn)
-	cb.Execute(successFn)
+	_ = cb.Execute(successFn)
+	_ = cb.Execute(successFn)
 
 	metrics = cb.Metrics()
 	if metrics.State != StateClosed {
@@ -403,8 +403,8 @@ func TestCircuitBreaker_Reset(t *testing.T) {
 	failFn := func() error { return errTest }
 
 	// Open circuit
-	cb.Execute(failFn)
-	cb.Execute(failFn)
+	_ = cb.Execute(failFn)
+	_ = cb.Execute(failFn)
 
 	if cb.State() != StateOpen {
 		t.Fatalf("state = %v, want open", cb.State())
@@ -445,8 +445,8 @@ func TestCircuitBreaker_String(t *testing.T) {
 
 	// Open it
 	failFn := func() error { return errTest }
-	cb.Execute(failFn)
-	cb.Execute(failFn)
+	_ = cb.Execute(failFn)
+	_ = cb.Execute(failFn)
 
 	expected = "test(open)"
 	if cb.String() != expected {
@@ -496,7 +496,7 @@ func TestCircuitBreaker_TimeoutBehavior(t *testing.T) {
 
 	// Open circuit (need 5 failures)
 	for i := 0; i < 5; i++ {
-		cb.Execute(failFn)
+		_ = cb.Execute(failFn)
 	}
 
 	if cb.State() != StateOpen {
@@ -549,8 +549,8 @@ func TestCircuitBreaker_SuccessResetsFailureCount(t *testing.T) {
 	successFn := func() error { return nil }
 
 	// Fail twice (but not enough to open)
-	cb.Execute(failFn)
-	cb.Execute(failFn)
+	_ = cb.Execute(failFn)
+	_ = cb.Execute(failFn)
 
 	metrics := cb.Metrics()
 	if metrics.FailureCount != 2 {
@@ -558,7 +558,7 @@ func TestCircuitBreaker_SuccessResetsFailureCount(t *testing.T) {
 	}
 
 	// Succeed once
-	cb.Execute(successFn)
+	_ = cb.Execute(successFn)
 
 	metrics = cb.Metrics()
 	if metrics.FailureCount != 0 {
@@ -566,8 +566,8 @@ func TestCircuitBreaker_SuccessResetsFailureCount(t *testing.T) {
 	}
 
 	// Fail twice again - should still not open (threshold is 3)
-	cb.Execute(failFn)
-	cb.Execute(failFn)
+	_ = cb.Execute(failFn)
+	_ = cb.Execute(failFn)
 
 	if cb.State() != StateClosed {
 		t.Errorf("state = %v, want closed", cb.State())

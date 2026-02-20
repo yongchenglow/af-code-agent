@@ -1,3 +1,8 @@
+// Package qasynth provides QA synthesis capabilities for aggregating validation results.
+//
+// The QA synthesizer analyzes validation results (syntax, linting, tests) and
+// iteration history to make informed decisions about whether to approve changes,
+// request fixes, or block the workflow due to repeated failures.
 package qasynth
 
 import (
@@ -31,22 +36,25 @@ func NewQASynthesizer(a *agent.Agent) *QASynthesizer {
 
 // SynthesisInput contains inputs for synthesis
 type SynthesisInput struct {
-	// Issue being evaluated
-	IssueID     string `json:"issue_id"`
+	// IssueID is the identifier of the issue being evaluated
+	IssueID string `json:"issue_id"`
+	// Description describes the issue
 	Description string `json:"description"`
-
-	// Validation results
-	SyntaxValid   bool `json:"syntax_valid"`
+	// SyntaxValid indicates if syntax validation passed
+	SyntaxValid bool `json:"syntax_valid"`
+	// LintingPassed indicates if linting checks passed
 	LintingPassed bool `json:"linting_passed"`
-	TestsPassed   bool `json:"tests_passed"`
-
-	// Iteration history
+	// TestsPassed indicates if tests passed
+	TestsPassed bool `json:"tests_passed"`
+	// IterationHistory tracks previous fix attempts
 	IterationHistory []*IterationRecord `json:"iteration_history"`
 }
 
 // IterationRecord tracks a previous iteration
 type IterationRecord struct {
-	Action  string `json:"action"` // APPROVE, FIX, BLOCK
+	// Action is the decision made: APPROVE, FIX, or BLOCK
+	Action string `json:"action"`
+	// Summary describes what happened
 	Summary string `json:"summary"`
 }
 
@@ -54,13 +62,10 @@ type IterationRecord struct {
 type SynthesisDecision struct {
 	// Action is the decision: APPROVE, FIX, or BLOCK
 	Action string `json:"action"`
-
-	// Summary is a concise explanation
+	// Summary is a concise explanation of the decision
 	Summary string `json:"summary"`
-
-	// Feedback is actionable feedback for FIX decisions
+	// Feedback provides actionable feedback for FIX decisions
 	Feedback []string `json:"feedback,omitempty"`
-
 	// Stuck indicates recurring failures (for retry advisor)
 	Stuck bool `json:"stuck"`
 }

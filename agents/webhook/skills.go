@@ -502,6 +502,7 @@ func isAgentPR(ctx context.Context, repo string, prNumber int) bool {
 	}
 
 	// Fetch PR details
+	//nolint:staticcheck // Using deprecated helper function for compatibility
 	pr, err := ghpkg.GetPR(ctx, ghClient, owner, repoName, prNumber)
 	if err != nil {
 		log.Printf("Failed to fetch PR for loop check: %v", err)

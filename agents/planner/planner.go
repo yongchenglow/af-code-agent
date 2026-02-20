@@ -1,3 +1,9 @@
+// Package planner provides AI-powered code review planning capabilities.
+//
+// The planner analyzes code changes and generates comprehensive review plans
+// including security issues, bug detection, standards violations, and test gaps.
+// It creates prioritized fix plans with dependency tracking for efficient
+// automated code review.
 package planner
 
 import (
@@ -41,58 +47,92 @@ type ReviewPlan struct {
 	// Fix plan with dependencies
 	FixPlan *FixPlan `json:"fix_plan"`
 
-	// Recommendation
-	Recommendation string `json:"recommendation"` // APPROVE, FIX, REVIEW_NEEDED
+	// Recommendation is one of: APPROVE, FIX, REVIEW_NEEDED
+	Recommendation string `json:"recommendation"`
 }
 
 // SecurityIssue represents a security vulnerability
 type SecurityIssue struct {
-	ID          string `json:"id"`
-	FilePath    string `json:"file_path"`
-	Line        int    `json:"line"`
-	Type        string `json:"type"`
-	Severity    string `json:"severity"`
-	Title       string `json:"title"`
+	// ID is a unique identifier for the issue
+	ID string `json:"id"`
+	// FilePath is the path to the file containing the issue
+	FilePath string `json:"file_path"`
+	// Line is the line number where the issue occurs
+	Line int `json:"line"`
+	// Type is the category of security issue
+	Type string `json:"type"`
+	// Severity is one of: Critical, High, Medium, Low
+	Severity string `json:"severity"`
+	// Title is a brief description of the issue
+	Title string `json:"title"`
+	// Description provides detailed information about the issue
 	Description string `json:"description"`
-	CWE         string `json:"cwe"`
-	OWASP       string `json:"owasp"`
+	// CWE is the Common Weakness Enumeration identifier
+	CWE string `json:"cwe"`
+	// OWASP is the OWASP Top 10 category
+	OWASP string `json:"owasp"`
+	// Remediation suggests how to fix the issue
 	Remediation string `json:"remediation"`
 }
 
 // BugIssue represents a logic bug
 type BugIssue struct {
-	ID               string `json:"id"`
-	FilePath         string `json:"file_path"`
-	Line             int    `json:"line"`
-	Type             string `json:"type"`
-	Severity         string `json:"severity"`
-	Title            string `json:"title"`
-	Description      string `json:"description"`
-	WhyItFails       string `json:"why_it_fails"`
+	// ID is a unique identifier for the issue
+	ID string `json:"id"`
+	// FilePath is the path to the file containing the issue
+	FilePath string `json:"file_path"`
+	// Line is the line number where the issue occurs
+	Line int `json:"line"`
+	// Type is the category of bug
+	Type string `json:"type"`
+	// Severity is one of: Critical, High, Medium, Low
+	Severity string `json:"severity"`
+	// Title is a brief description of the bug
+	Title string `json:"title"`
+	// Description provides detailed information about the bug
+	Description string `json:"description"`
+	// WhyItFails explains why the code fails
+	WhyItFails string `json:"why_it_fails"`
+	// ExpectedBehavior describes what the code should do
 	ExpectedBehavior string `json:"expected_behavior"`
 }
 
 // StandardsViolation represents a coding standards violation
 type StandardsViolation struct {
-	ID          string `json:"id"`
-	FilePath    string `json:"file_path"`
-	Line        int    `json:"line"`
-	Rule        string `json:"rule"`
-	Severity    string `json:"severity"`
-	Message     string `json:"message"`
-	Why         string `json:"why"`
-	Suggestion  string `json:"suggestion"`
-	AutoFixable bool   `json:"auto_fixable"`
+	// ID is a unique identifier for the violation
+	ID string `json:"id"`
+	// FilePath is the path to the file containing the violation
+	FilePath string `json:"file_path"`
+	// Line is the line number where the violation occurs
+	Line int `json:"line"`
+	// Rule is the name of the violated rule
+	Rule string `json:"rule"`
+	// Severity is one of: Critical, High, Medium, Low
+	Severity string `json:"severity"`
+	// Message describes the violation
+	Message string `json:"message"`
+	// Why explains why this is a violation
+	Why string `json:"why"`
+	// Suggestion provides guidance on how to fix it
+	Suggestion string `json:"suggestion"`
+	// AutoFixable indicates whether the violation can be automatically fixed
+	AutoFixable bool `json:"auto_fixable"`
 }
 
 // TestGap represents a missing test
 type TestGap struct {
-	ID          string   `json:"id"`
-	Description string   `json:"description"`
-	TestFile    string   `json:"test_file"`
-	Framework   string   `json:"framework"`
-	TestCount   int      `json:"test_count"`
-	TestCases   []string `json:"test_cases"`
+	// ID is a unique identifier for the gap
+	ID string `json:"id"`
+	// Description explains what tests are missing
+	Description string `json:"description"`
+	// TestFile is the suggested test file path
+	TestFile string `json:"test_file"`
+	// Framework is the testing framework to use
+	Framework string `json:"framework"`
+	// TestCount is the estimated number of tests needed
+	TestCount int `json:"test_count"`
+	// TestCases lists specific test cases to implement
+	TestCases []string `json:"test_cases"`
 }
 
 // FixPlan contains the execution plan for fixes
@@ -106,14 +146,22 @@ type FixPlan struct {
 
 // FixTask represents a single fix task
 type FixTask struct {
-	ID          string   `json:"id"`
-	Type        string   `json:"type"` // security, bug, standards, test
-	File        string   `json:"file"`
-	Line        int      `json:"line"`
-	Description string   `json:"description"`
-	Priority    string   `json:"priority"` // critical, high, medium, low
-	DependsOn   []string `json:"depends_on"`
-	EstTokens   int      `json:"est_tokens"`
+	// ID is a unique identifier for the task
+	ID string `json:"id"`
+	// Type is one of: security, bug, standards, test
+	Type string `json:"type"`
+	// File is the path to the file to fix
+	File string `json:"file"`
+	// Line is the line number to fix
+	Line int `json:"line"`
+	// Description explains what needs to be fixed
+	Description string `json:"description"`
+	// Priority is one of: critical, high, medium, low
+	Priority string `json:"priority"`
+	// DependsOn lists task IDs that must complete first
+	DependsOn []string `json:"depends_on"`
+	// EstTokens is the estimated token count for the fix
+	EstTokens int `json:"est_tokens"`
 }
 
 // Planner handles AI-powered code review planning
@@ -405,12 +453,12 @@ func buildFilesInfo(files []*analyzer.FileChange) string {
 	var b strings.Builder
 	for i, file := range files {
 		if i >= 20 {
-			b.WriteString(fmt.Sprintf("\n... and %d more files\n", len(files)-20))
+			fmt.Fprintf(&b, "\n... and %d more files\n", len(files)-20)
 			break
 		}
 
-		b.WriteString(fmt.Sprintf("### File: %s (%s)\n", file.Filename, file.Language))
-		b.WriteString(fmt.Sprintf("Changes: +%d -%d\n", file.Additions, file.Deletions))
+		fmt.Fprintf(&b, "### File: %s (%s)\n", file.Filename, file.Language)
+		fmt.Fprintf(&b, "Changes: +%d -%d\n", file.Additions, file.Deletions)
 		if file.Patch != "" {
 			b.WriteString("```diff\n")
 			b.WriteString(file.Patch)

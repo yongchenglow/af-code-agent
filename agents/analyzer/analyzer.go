@@ -25,6 +25,7 @@ func NewAnalyzer(githubClient *github.Client) *Analyzer {
 // AnalyzePR analyzes a pull request and returns all changed files
 func (a *Analyzer) AnalyzePR(ctx context.Context, owner, repo string, prNumber int) (*AnalysisResult, error) {
 	// Fetch PR files
+	//nolint:staticcheck // Using deprecated helper function for compatibility
 	files, err := ghclient.GetPRFiles(ctx, a.githubClient, owner, repo, prNumber)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch PR files: %w", err)

@@ -1,3 +1,8 @@
+// Package testexec provides test generation capabilities for code review.
+//
+// The test executor generates unit tests and integration tests based on
+// identified test gaps, using AI to create comprehensive test suites that
+// verify fixes and cover edge cases.
 package testexec
 
 import (
@@ -33,11 +38,17 @@ func NewExecutor(a *agent.Agent) *Executor {
 
 // TestResult contains the result of test generation
 type TestResult struct {
-	GapID     string
-	TestFile  string
-	TestCode  string
-	Success   bool
-	Error     string
+	// GapID is the identifier of the test gap
+	GapID string
+	// TestFile is the path to the generated test file
+	TestFile string
+	// TestCode is the generated test code
+	TestCode string
+	// Success indicates if test generation succeeded
+	Success bool
+	// Error contains any error message
+	Error string
+	// TestCount is the number of tests generated
 	TestCount int
 }
 

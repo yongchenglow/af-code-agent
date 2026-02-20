@@ -219,6 +219,7 @@ func FetchPRFilesSkill(ctx context.Context, input map[string]any) (any, error) {
 	}
 
 	// Fetch PR details to get the head ref
+	//nolint:staticcheck // Using deprecated helper function for compatibility
 	pr, err := ghpkg.GetPR(ctx, ghClient, owner, repoName, prNumber)
 	if err != nil {
 		log.Printf("Failed to fetch PR details: %v, using mock data", err)
@@ -228,6 +229,7 @@ func FetchPRFilesSkill(ctx context.Context, input map[string]any) (any, error) {
 	headRef := pr.GetHead().GetRef()
 
 	// Fetch changed files
+	//nolint:staticcheck // Using deprecated helper function for compatibility
 	fileChanges, err := ghpkg.GetPRFiles(ctx, ghClient, owner, repoName, prNumber)
 	if err != nil {
 		log.Printf("Failed to fetch PR files: %v, using mock data", err)
@@ -243,6 +245,7 @@ func FetchPRFilesSkill(ctx context.Context, input map[string]any) (any, error) {
 		}
 
 		// Fetch file content
+		//nolint:staticcheck // Using deprecated helper function for compatibility
 		content, err := ghpkg.GetFileContent(ctx, ghClient, owner, repoName, file.Filename, headRef)
 		if err != nil {
 			log.Printf("Failed to fetch content for %s: %v, skipping", file.Filename, err)

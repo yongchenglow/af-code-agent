@@ -24,11 +24,47 @@ test: ## Run tests
 	@echo "Running tests..."
 	go test -v ./...
 
-test-coverage: ## Run tests with coverage
+test-coverage: ## Run tests with coverage and generate HTML report
 	@echo "Running tests with coverage..."
 	go test -v -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "✓ Coverage report: coverage.html"
+
+test-coverage-check: ## Run tests and verify coverage meets 60% threshold
+	@echo "Running tests and checking coverage..."
+	@go test -coverprofile=coverage.out ./... || exit 1
+	@echo "Checking coverage threshold..."
+	@go tool cover -func=coverage.out | awk '/^total:/ {if ($$3+0 < 60.0) {print "Coverage " $$3 " is below 60% threshold"; exit 1} else {print "✓ Coverage: " $$3; exit 0}}'
+
+test-coverage-func: ## Show coverage by function
+	@echo "Coverage by function:"
+	go tool cover -func=coverage.out | sort -t$$'\t' -k3 -nr | head -50
+
+test-coverage-pkg: ## Show coverage by package
+	@echo "Coverage by package:"
+	go tool cover -func=coverage.out | grep -v "^total" | awk -F: '{print $$1}' | sort | uniq | while read pkg; do \
+		go tool cover -func=coverage.out | grep "^$$pkg" | awk '/^total:/ {print $$0}'; \
+	done | sort -t$$'\t' -k3 -nr
+
+test-integration: ## Run integration tests
+	@echo "Running integration tests..."
+	go test -v ./tests/...
+
+test-agents: ## Run agent tests only
+	@echo "Running agent tests..."
+	go test -v ./agents/...
+
+test-pkg: ## Run package tests only
+	@echo "Running package tests..."
+	go test -v ./pkg/...
+
+test-race: ## Run tests with race detector
+	@echo "Running tests with race detector..."
+	go test -race -v ./...
+
+test-bench: ## Run benchmark tests
+	@echo "Running benchmark tests..."
+	go test -bench=. -benchmem ./...
 
 run: ## Run the application (requires .env file)
 	@echo "Starting $(BINARY_NAME)..."

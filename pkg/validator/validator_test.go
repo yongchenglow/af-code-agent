@@ -64,9 +64,9 @@ func TestValidator_ValidatePayloadSize(t *testing.T) {
 	})
 
 	tests := []struct {
-		name     string
-		size     int
-		wantErr  bool
+		name    string
+		size    int
+		wantErr bool
 	}{
 		{
 			name:    "small payload",
@@ -414,7 +414,7 @@ func TestValidator_ValidateRepository(t *testing.T) {
 
 func TestValidator_ValidateRequest(t *testing.T) {
 	validator := NewValidator(ValidatorConfig{
-		AllowedEvents: []string{"pull_request", "push"},
+		AllowedEvents:  []string{"pull_request", "push"},
 		MaxPayloadSize: 1024,
 	})
 
@@ -527,8 +527,8 @@ func TestRateLimiter_GetRemaining(t *testing.T) {
 
 func TestRateLimiter_WindowExpiry(t *testing.T) {
 	limiter := NewRateLimiter(RateLimiterConfig{
-		MaxRequests: 2,
-		Window:      100 * time.Millisecond,
+		MaxRequests:     2,
+		Window:          100 * time.Millisecond,
 		CleanupInterval: 50 * time.Millisecond,
 	})
 

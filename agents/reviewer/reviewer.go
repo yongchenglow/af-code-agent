@@ -298,22 +298,22 @@ func buildReviewPrompt(files []*analyzer.FileChange, prContext map[string]interf
 
 	// Add PR context if available
 	if title, ok := prContext["title"].(string); ok {
-		builder.WriteString(fmt.Sprintf("PR Title: %s\n", title))
+		fmt.Fprintf(&builder, "PR Title: %s\n", title)
 	}
 	if description, ok := prContext["description"].(string); ok && description != "" {
-		builder.WriteString(fmt.Sprintf("PR Description: %s\n", description))
+		fmt.Fprintf(&builder, "PR Description: %s\n", description)
 	}
 	builder.WriteString("\n")
 
 	// Add file changes
 	for i, file := range files {
 		if i >= constants.MaxReviewableFiles {
-			builder.WriteString(fmt.Sprintf("\n... and %d more files\n", len(files)-constants.MaxReviewableFiles))
+			fmt.Fprintf(&builder, "\n... and %d more files\n", len(files)-constants.MaxReviewableFiles)
 			break
 		}
 
-		builder.WriteString(fmt.Sprintf("File: %s (Language: %s, +%d -%d)\n",
-			file.Filename, file.Language, file.Additions, file.Deletions))
+		fmt.Fprintf(&builder, "File: %s (Language: %s, +%d -%d)\n",
+			file.Filename, file.Language, file.Additions, file.Deletions)
 
 		// Use patch (diff) instead of full content when available - much smaller
 		if file.Patch != "" {
@@ -343,7 +343,7 @@ func buildSecurityPrompt(files []*analyzer.FileChange) string {
 			break
 		}
 
-		builder.WriteString(fmt.Sprintf("File: %s (Language: %s)\n", file.Filename, file.Language))
+		fmt.Fprintf(&builder, "File: %s (Language: %s)\n", file.Filename, file.Language)
 
 		if file.Content != "" {
 			content := utils.TruncateContent(file.Content, constants.MaxSecurityContentLength)

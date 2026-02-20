@@ -1,3 +1,8 @@
+// Package workflow provides orchestration capabilities for the code review workflow.
+//
+// The workflow orchestrator coordinates the planner and executors to perform
+// comprehensive code reviews, execute fixes in parallel, and generate tests.
+// It manages the complete review lifecycle from planning to fix verification.
 package workflow
 
 import (
@@ -221,22 +226,36 @@ func (o *ExecutorOrchestrator) determineRecommendation(result *WorkflowResult) s
 
 // WorkflowResult contains the result of the workflow execution
 type WorkflowResult struct {
-	Plan           *planner.ReviewPlan
-	FixResults     []*FixTaskResult
-	TestResults    []*testexec.TestResult
-	Success        bool
-	Error          string
+	// Plan is the review plan created by the planner
+	Plan *planner.ReviewPlan
+	// FixResults contains results from fix execution
+	FixResults []*FixTaskResult
+	// TestResults contains results from test generation
+	TestResults []*testexec.TestResult
+	// Success indicates if the workflow completed successfully
+	Success bool
+	// Error contains any error message
+	Error string
+	// Recommendation is one of: APPROVE, FIX, BLOCK
 	Recommendation string
-	Summary        string
-	Warnings       []string
+	// Summary provides a human-readable summary
+	Summary string
+	// Warnings lists any warnings encountered
+	Warnings []string
 }
 
 // FixTaskResult contains the result of a single fix task
 type FixTaskResult struct {
-	TaskID       string
-	TaskType     string
-	Success      bool
-	Patch        string
+	// TaskID is the identifier of the task
+	TaskID string
+	// TaskType is one of: security, bug, standards, test
+	TaskType string
+	// Success indicates if the task completed successfully
+	Success bool
+	// Patch contains the generated fix patch
+	Patch string
+	// OriginalCode is the code before the fix
 	OriginalCode string
-	Error        string
+	// Error contains any error message
+	Error string
 }

@@ -50,13 +50,13 @@ type Config struct {
 // DefaultConfig returns a default retry configuration.
 func DefaultConfig() Config {
 	return Config{
-		MaxAttempts:    3,
-		InitialDelay:   1 * time.Second,
-		MaxDelay:       30 * time.Second,
-		Multiplier:     2.0,
-		Jitter:         0.1,
-		Retryable:      nil, // All errors are retryable by default
-		OnRetry:        nil,
+		MaxAttempts:  3,
+		InitialDelay: 1 * time.Second,
+		MaxDelay:     30 * time.Second,
+		Multiplier:   2.0,
+		Jitter:       0.1,
+		Retryable:    nil, // All errors are retryable by default
+		OnRetry:      nil,
 	}
 }
 
@@ -286,7 +286,7 @@ func IsRetryableError(err error) bool {
 	// Check for net.Error
 	var netErr net.Error
 	if errors.As(err, &netErr) {
-		return netErr.Temporary() || netErr.Timeout()
+		return netErr.Timeout()
 	}
 
 	return false
@@ -313,51 +313,51 @@ type ConfigPreset struct{}
 // Conservative returns a conservative retry configuration (fewer retries, shorter delays).
 func (ConfigPreset) Conservative() Config {
 	return Config{
-		MaxAttempts:    2,
-		InitialDelay:   500 * time.Millisecond,
-		MaxDelay:       10 * time.Second,
-		Multiplier:     1.5,
-		Jitter:         0.1,
-		Retryable:      TransientRetryable,
-		OnRetry:        nil,
+		MaxAttempts:  2,
+		InitialDelay: 500 * time.Millisecond,
+		MaxDelay:     10 * time.Second,
+		Multiplier:   1.5,
+		Jitter:       0.1,
+		Retryable:    TransientRetryable,
+		OnRetry:      nil,
 	}
 }
 
 // Moderate returns a moderate retry configuration (balanced retries and delays).
 func (ConfigPreset) Moderate() Config {
 	return Config{
-		MaxAttempts:    3,
-		InitialDelay:   1 * time.Second,
-		MaxDelay:       30 * time.Second,
-		Multiplier:     2.0,
-		Jitter:         0.1,
-		Retryable:      TransientRetryable,
-		OnRetry:        nil,
+		MaxAttempts:  3,
+		InitialDelay: 1 * time.Second,
+		MaxDelay:     30 * time.Second,
+		Multiplier:   2.0,
+		Jitter:       0.1,
+		Retryable:    TransientRetryable,
+		OnRetry:      nil,
 	}
 }
 
 // Aggressive returns an aggressive retry configuration (more retries, longer delays).
 func (ConfigPreset) Aggressive() Config {
 	return Config{
-		MaxAttempts:    5,
-		InitialDelay:   2 * time.Second,
-		MaxDelay:       60 * time.Second,
-		Multiplier:     2.0,
-		Jitter:         0.2,
-		Retryable:      TransientRetryable,
-		OnRetry:        nil,
+		MaxAttempts:  5,
+		InitialDelay: 2 * time.Second,
+		MaxDelay:     60 * time.Second,
+		Multiplier:   2.0,
+		Jitter:       0.2,
+		Retryable:    TransientRetryable,
+		OnRetry:      nil,
 	}
 }
 
 // ForAI returns a retry configuration optimized for AI API calls.
 func (ConfigPreset) ForAI() Config {
 	return Config{
-		MaxAttempts:    3,
-		InitialDelay:   1 * time.Second,
-		MaxDelay:       30 * time.Second,
-		Multiplier:     2.0,
-		Jitter:         0.1,
-		Retryable:      TransientRetryable,
+		MaxAttempts:  3,
+		InitialDelay: 1 * time.Second,
+		MaxDelay:     30 * time.Second,
+		Multiplier:   2.0,
+		Jitter:       0.1,
+		Retryable:    TransientRetryable,
 		OnRetry: func(attempt int, err error) {
 			// Can be used for logging
 		},
@@ -367,12 +367,12 @@ func (ConfigPreset) ForAI() Config {
 // ForGitHubAPI returns a retry configuration optimized for GitHub API calls.
 func (ConfigPreset) ForGitHubAPI() Config {
 	return Config{
-		MaxAttempts:    5,
-		InitialDelay:   500 * time.Millisecond,
-		MaxDelay:       60 * time.Second,
-		Multiplier:     2.0,
-		Jitter:         0.1,
-		Retryable:      TransientRetryable,
+		MaxAttempts:  5,
+		InitialDelay: 500 * time.Millisecond,
+		MaxDelay:     60 * time.Second,
+		Multiplier:   2.0,
+		Jitter:       0.1,
+		Retryable:    TransientRetryable,
 		OnRetry: func(attempt int, err error) {
 			// Can be used for logging
 		},
@@ -382,12 +382,12 @@ func (ConfigPreset) ForGitHubAPI() Config {
 // ForWebhook returns a retry configuration optimized for webhook processing.
 func (ConfigPreset) ForWebhook() Config {
 	return Config{
-		MaxAttempts:    2,
-		InitialDelay:   100 * time.Millisecond,
-		MaxDelay:       1 * time.Second,
-		Multiplier:     2.0,
-		Jitter:         0.05,
-		Retryable:      TransientRetryable,
-		OnRetry:        nil,
+		MaxAttempts:  2,
+		InitialDelay: 100 * time.Millisecond,
+		MaxDelay:     1 * time.Second,
+		Multiplier:   2.0,
+		Jitter:       0.05,
+		Retryable:    TransientRetryable,
+		OnRetry:      nil,
 	}
 }

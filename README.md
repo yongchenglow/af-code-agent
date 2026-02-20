@@ -69,6 +69,43 @@ The GitHub Code Review Agent autonomously:
 | **Safe** (default) | Creates PR with fixes for human review | Production repos, teams new to agent |
 | **YOLO** | Pushes fixes directly to PR branch | Personal repos, trusted codebases |
 
+### Reliability Features
+
+- **Circuit Breaker**: Protects against AI and GitHub API failures
+  - Opens after 5 consecutive failures
+  - Auto-recovers after 1 minute timeout
+  - Graceful error messages when unavailable
+
+- **Retry Logic**: Handles transient failures gracefully
+  - Exponential backoff (1s initial, 30s max delay)
+  - Context-aware cancellation
+  - Different policies for AI vs GitHub API calls
+
+- **Health Checks**: Comprehensive health monitoring
+  - `/health/live` - Liveness probe (process alive)
+  - `/health/ready` - Readiness probe (dependencies healthy)
+  - `/health/started` - Startup probe (initialization complete)
+
+### Security Features
+
+- **Secret Scanning**: Detects exposed credentials
+  - AWS access keys and secret keys
+  - GitHub tokens (PAT, OAuth, App tokens)
+  - Private keys (RSA, EC, OPENSSH)
+  - Generic secrets and API keys
+
+- **Webhook Validation**: Comprehensive input validation
+  - Signature verification
+  - Payload size limits (max 10MB)
+  - Content type validation
+  - Rate limiting per repository (10 req/min)
+
+- **Security Headers**: Hardened HTTP responses
+  - X-Content-Type-Options: nosniff
+  - X-Frame-Options: DENY
+  - X-XSS-Protection: 1; mode=block
+  - Content-Security-Policy: default-src 'none'
+
 ## Architecture
 
 ```mermaid
@@ -279,6 +316,36 @@ go test ./agents/reviewer/...
 
 # Verbose output
 go test -v ./agents/...
+
+# Check coverage threshold (60%)
+make test-coverage-check
+
+# View coverage by function
+make test-coverage-func
+
+# View coverage by package
+make test-coverage-pkg
+
+# Run integration tests
+make test-integration
+
+# Run with race detector
+make test-race
+
+# Run benchmarks
+make test-bench
+```
+
+### Test Coverage
+
+This project maintains a minimum of 60% test coverage:
+
+```bash
+# Generate coverage report
+make test-coverage
+
+# View HTML report
+open coverage.html
 ```
 
 ### Run Locally
@@ -395,6 +462,8 @@ See [Deployment Guide](docs/DEPLOYMENT.md) for complete instructions.
 | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) | All configuration options |
 | [Deployment Guide](docs/DEPLOYMENT.md) | Production deployment with Kubernetes |
 | [API Reference](docs/API_REFERENCE.md) | Technical API documentation |
+| [Architecture Decisions](docs/adr/) | ADRs for major design decisions |
+| [Reliability Features](docs/reliability-features.md) | Circuit breaker, retry, health checks |
 
 ## Troubleshooting
 

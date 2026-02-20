@@ -136,7 +136,7 @@ func formatIssueComment(issue *Issue) string {
 
 	var builder strings.Builder
 
-	builder.WriteString(fmt.Sprintf("%s **%s**: %s\n\n", emoji, issue.Severity, issue.Title))
+	fmt.Fprintf(&builder, "%s **%s**: %s\n\n", emoji, issue.Severity, issue.Title)
 
 	if issue.Description != "" && issue.Description != issue.Title {
 		builder.WriteString("**Details:**\n")
@@ -156,7 +156,7 @@ func formatIssueComment(issue *Issue) string {
 		builder.WriteString("\n```\n\n")
 	}
 
-	builder.WriteString(fmt.Sprintf("_Category: %s | Automated review by GitHub Code Agent_", issue.Category))
+	fmt.Fprintf(&builder, "_Category: %s | Automated review by GitHub Code Agent_", issue.Category)
 
 	return builder.String()
 }
@@ -173,20 +173,20 @@ func formatReviewSummary(issues *PrioritizedIssues) string {
 		return builder.String()
 	}
 
-	builder.WriteString(fmt.Sprintf("Found **%d** issue(s):\n\n", totalIssues))
+	fmt.Fprintf(&builder, "Found **%d** issue(s):\n\n", totalIssues)
 
 	// Summary by severity
 	if len(issues.Critical) > 0 {
-		builder.WriteString(fmt.Sprintf("- 🔴 **%d** Critical\n", len(issues.Critical)))
+		fmt.Fprintf(&builder, "- 🔴 **%d** Critical\n", len(issues.Critical))
 	}
 	if len(issues.High) > 0 {
-		builder.WriteString(fmt.Sprintf("- 🟠 **%d** High\n", len(issues.High)))
+		fmt.Fprintf(&builder, "- 🟠 **%d** High\n", len(issues.High))
 	}
 	if len(issues.Medium) > 0 {
-		builder.WriteString(fmt.Sprintf("- 🟡 **%d** Medium\n", len(issues.Medium)))
+		fmt.Fprintf(&builder, "- 🟡 **%d** Medium\n", len(issues.Medium))
 	}
 	if len(issues.Low) > 0 {
-		builder.WriteString(fmt.Sprintf("- 🔵 **%d** Low\n", len(issues.Low)))
+		fmt.Fprintf(&builder, "- 🔵 **%d** Low\n", len(issues.Low))
 	}
 
 	builder.WriteString("\n")
@@ -204,7 +204,7 @@ func formatReviewSummary(issues *PrioritizedIssues) string {
 
 		for _, issue := range highPriority {
 			emoji := getSeverityEmoji(issue.Severity)
-			builder.WriteString(fmt.Sprintf("%s %s in `%s:%d`\n", emoji, issue.Title, issue.FilePath, issue.Line))
+			fmt.Fprintf(&builder, "%s %s in `%s:%d`\n", emoji, issue.Title, issue.FilePath, issue.Line)
 		}
 
 		builder.WriteString("\n")

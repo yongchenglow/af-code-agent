@@ -69,6 +69,9 @@ func ShouldIgnoreFile(filename string, ignorePatterns []string) bool {
 
 // TruncateContent truncates content to maxLength with truncation indicator
 func TruncateContent(content string, maxLength int) string {
+	if maxLength <= 0 {
+		return "\n... (truncated)"
+	}
 	if len(content) <= maxLength {
 		return content
 	}

@@ -19,10 +19,10 @@ import (
 
 // Server wraps the webhook HTTP handler
 type Server struct {
-	service    *Service
-	validator  *validator.Validator
+	service     *Service
+	validator   *validator.Validator
 	rateLimiter *validator.RateLimiter
-	log        *logger.Logger
+	log         *logger.Logger
 }
 
 // NewServer creates a new webhook server

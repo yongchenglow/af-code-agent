@@ -35,12 +35,12 @@ func TestRetryer_New(t *testing.T) {
 
 	t.Run("custom config", func(t *testing.T) {
 		r := New(Config{
-			MaxAttempts:    5,
-			InitialDelay:   2 * time.Second,
-			MaxDelay:       60 * time.Second,
-			Multiplier:     1.5,
-			Jitter:         0.2,
-			Retryable:      NeverRetryable,
+			MaxAttempts:  5,
+			InitialDelay: 2 * time.Second,
+			MaxDelay:     60 * time.Second,
+			Multiplier:   1.5,
+			Jitter:       0.2,
+			Retryable:    NeverRetryable,
 		})
 
 		if r.config.MaxAttempts != 5 {
@@ -236,11 +236,11 @@ func TestRetryer_ExecuteWithResult_SuccessAfterRetries(t *testing.T) {
 
 func TestRetryer_CalculateDelay(t *testing.T) {
 	tests := []struct {
-		name     string
-		config   Config
-		attempt  int
-		wantMin  time.Duration
-		wantMax  time.Duration
+		name    string
+		config  Config
+		attempt int
+		wantMin time.Duration
+		wantMax time.Duration
 	}{
 		{
 			name: "first attempt",
@@ -306,8 +306,8 @@ func TestRetryer_CalculateDelay(t *testing.T) {
 
 func TestRetryer_OnRetryCallback(t *testing.T) {
 	r := New(Config{
-		MaxAttempts:    3,
-		InitialDelay:   10 * time.Millisecond,
+		MaxAttempts:  3,
+		InitialDelay: 10 * time.Millisecond,
 		OnRetry: func(attempt int, err error) {
 			// Callback called
 		},
@@ -324,7 +324,7 @@ func TestRetryer_OnRetryCallback(t *testing.T) {
 		return errRetryable
 	}
 
-	r.Execute(context.Background(), fn)
+	_ = r.Execute(context.Background(), fn)
 
 	if callCount != 3 {
 		t.Errorf("callCount = %d, want 3", callCount)
@@ -336,11 +336,11 @@ func TestRetryer_OnRetryCallback(t *testing.T) {
 
 func TestRetryer_ExponentialBackoff(t *testing.T) {
 	r := New(Config{
-		MaxAttempts:    4,
-		InitialDelay:   50 * time.Millisecond,
-		MaxDelay:       500 * time.Millisecond,
-		Multiplier:     2.0,
-		Jitter:         0,
+		MaxAttempts:  4,
+		InitialDelay: 50 * time.Millisecond,
+		MaxDelay:     500 * time.Millisecond,
+		Multiplier:   2.0,
+		Jitter:       0,
 	})
 
 	var callCount int
@@ -361,7 +361,7 @@ func TestRetryer_ExponentialBackoff(t *testing.T) {
 	}
 
 	startTime := time.Now()
-	r.Execute(context.Background(), fn)
+	_ = r.Execute(context.Background(), fn)
 
 	if callCount != 4 {
 		t.Fatalf("callCount = %d, want 4", callCount)
@@ -557,10 +557,10 @@ func TestRetryer_Concurrent(t *testing.T) {
 
 func TestRetryer_Jitter(t *testing.T) {
 	r := New(Config{
-		MaxAttempts:    2,
-		InitialDelay:   100 * time.Millisecond,
-		Multiplier:     1.0,
-		Jitter:         0.5,
+		MaxAttempts:  2,
+		InitialDelay: 100 * time.Millisecond,
+		Multiplier:   1.0,
+		Jitter:       0.5,
 	})
 
 	// Run multiple times to verify jitter creates variation
