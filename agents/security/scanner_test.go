@@ -73,7 +73,7 @@ const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwi
 		{
 			name: "Slack Bot Token",
 			content: `
-SLACK_TOKEN = "xoxb-123456789012-1234567890123-AbCdEfGhIjKlMnOpQrStUvWx"
+SLACK_TOKEN = "xoxb-FALSEPOSITIVE-TEST-TOKEN-NOTREAL"
 `,
 			filePath:     "slack.go",
 			wantFindings: 1,
@@ -82,7 +82,7 @@ SLACK_TOKEN = "xoxb-123456789012-1234567890123-AbCdEfGhIjKlMnOpQrStUvWx"
 		{
 			name: "Stripe API Key",
 			content: `
-stripe.api_key = "sk_live_1234567890abcdefghijklmnop"
+stripe.api_key = "sk_live_TESTKEY-NOTAREALSECRET123"
 `,
 			filePath:     "payment.py",
 			wantFindings: 1,
@@ -419,8 +419,8 @@ func TestScanner_AllPatternTypes(t *testing.T) {
 		"RSA Private Key":              "-----BEGIN RSA PRIVATE KEY-----",
 		"Generic Private Key":          "-----BEGIN PRIVATE KEY-----",
 		"JWT Token":                    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
-		"Slack Bot Token":              "xoxb-123456789012-1234567890123-AbCdEfGhIjKlMnOpQrStUvWx",
-		"Stripe API Key":               "sk_live_1234567890abcdefghijklmnop",
+		"Slack Bot Token":              "xoxb-FALSEPOSITIVE-TEST-TOKEN-NOTREAL",
+		"Stripe API Key":               "sk_live_TESTKEY-NOTAREALSECRET123",
 		"PostgreSQL Connection String": "postgres://user:pass@localhost:5432/mydb",
 		"MySQL Connection String":      "mysql://user:pass@localhost:3306/mydb",
 		"MongoDB Connection String":    "mongodb://user:pass@localhost:27017/mydb",
